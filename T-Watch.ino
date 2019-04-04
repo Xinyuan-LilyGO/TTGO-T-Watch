@@ -15,7 +15,7 @@
 #include <Ticker.h>
 #include "axp20x.h"
 #include <Button2.h>
-
+#include <SPI.h>
 
 /*********************
  *      DEFINES
@@ -25,6 +25,7 @@
 
 
 /**********************
+ * 
  *  STATIC VARIABLES
  **********************/
 AXP20X_Class axp;
@@ -72,6 +73,10 @@ void setup()
 
 #if 1
     g_event_queue_handle = xQueueCreate(TASK_QUEUE_MESSAGE_LEN, sizeof(task_event_data_t));
+
+    SPI.begin(TFT_SCLK,TFT_MISO,TFT_MOSI,-1);
+
+    lv_filesystem_init();
 
     display_init();
 

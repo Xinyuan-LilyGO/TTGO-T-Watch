@@ -43,23 +43,34 @@
 #define USER_BUTTON 36
 #else
 
+/*
+ * SD Card | ESP32
+ *    D2       12
+ *    D3       13
+ *    CMD      15
+ *    VSS      GND
+ *    VDD      3.3V
+ *    CLK      14
+ *    VSS      GND
+ *    D0       2  (add 1K pull up after flashing)
+ *    D1       4
+*/
 
-#define TFT_MISO            23
-#define TFT_MOSI            19
-#define TFT_SCLK            18
-#define TFT_CS              5
-#define TFT_DC              27
-#define TFT_RST             -1
-#define TFT_BL              2
+#define TFT_MISO            23  
+#define TFT_MOSI            19  
+#define TFT_SCLK            18  
+#define TFT_CS              5   
+#define TFT_DC              27  
+#define TFT_RST             -1  
+#define TFT_BL              2   
 
-#define SD_CS               25
+#define SD_CS               25  
 #define SD_MISO             23
 #define SD_MOSI             19
 #define SD_SCLK             18
-#define SD_DETECT           -1
+#define SD_DETECT           4
 
 #define TP_INT              35
-
 
 #define SD_CMD      -1
 #define SD_DATA0    -1

@@ -59,6 +59,7 @@ void display_off()
 {
     tft->writecommand(TFT_DISPOFF);
     tft->writecommand(TFT_SLPIN);
+    tp->sleepIn();
 }
 
 void display_init()

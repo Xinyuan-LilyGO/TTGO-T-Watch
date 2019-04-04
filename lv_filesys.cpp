@@ -15,7 +15,6 @@
 #endif
 
 
-
 #if USE_LV_FILESYSTEM
 typedef  FILE *pc_file_t;
 #define f_dev SD
@@ -215,19 +214,19 @@ bool lv_filesystem_init()
         return false;
     }
 
-#if USE_LV_FILESYSTEM
-    /* Add a simple drive to open images from PC*/
-    lv_fs_drv_t pcfs_drv;                           /*A driver descriptor*/
-    memset(&pcfs_drv, 0, sizeof(lv_fs_drv_t));      /*Initialization*/
-    pcfs_drv.file_size = sizeof(pc_file_t);            /*Set up fields...*/
-    pcfs_drv.letter = 'P';
-    pcfs_drv.open = pcfs_open;
-    pcfs_drv.close = pcfs_close;
-    pcfs_drv.read = pcfs_read;
-    pcfs_drv.seek = pcfs_seek;
-    pcfs_drv.tell = pcfs_tell;
-    lv_fs_add_drv(&pcfs_drv);
-#endif
+// #if USE_LV_FILESYSTEM
+//     /* Add a simple drive to open images from PC*/
+//     lv_fs_drv_t pcfs_drv;                           /*A driver descriptor*/
+//     memset(&pcfs_drv, 0, sizeof(lv_fs_drv_t));      /*Initialization*/
+//     pcfs_drv.file_size = sizeof(pc_file_t);            /*Set up fields...*/
+//     pcfs_drv.letter = 'P';
+//     pcfs_drv.open = pcfs_open;
+//     pcfs_drv.close = pcfs_close;
+//     pcfs_drv.read = pcfs_read;
+//     pcfs_drv.seek = pcfs_seek;
+//     pcfs_drv.tell = pcfs_tell;
+//     lv_fs_add_drv(&pcfs_drv);
+// #endif
     return true;
 }
 
