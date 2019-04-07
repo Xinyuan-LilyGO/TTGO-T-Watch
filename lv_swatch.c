@@ -29,7 +29,9 @@ extern int get_ld3_status();
 extern int get_ld4_status();
 extern int get_dc2_status();
 extern int get_dc3_status();
-
+extern const char *get_s7xg_model();
+extern const char *get_s7xg_ver();
+extern const char *get_s7xg_join();
 #else
 
 #include <lv_examples/lv_apps/lv_swatch/lv_swatch.h>
@@ -89,6 +91,21 @@ int get_ld1_status()
 {
     return 1;
 }
+
+const char *get_s7xg_model()
+{
+    return "s78G";
+}
+const char *get_s7xg_ver()
+{
+    return "V1.08";
+}
+const char *get_s7xg_join()
+{
+    return "unjoined";
+}
+
+
 #endif
 
 /*********************
@@ -149,6 +166,7 @@ LV_IMG_DECLARE(img_ttgo);
 LV_IMG_DECLARE(img_ble);
 LV_IMG_DECLARE(img_clock);
 LV_IMG_DECLARE(img_calendar);
+LV_IMG_DECLARE(img_lora);
 
 
 typedef lv_res_t (*lv_menu_action_t) (lv_obj_t *obj);
@@ -252,6 +270,10 @@ static void lv_bluetooth_setting_destroy(void);
 static void lv_clock_setting_destroy(void);
 static void lv_calendar_setting_destroy(void);
 
+
+static lv_main_struct_t main_data;
+static lv_wifi_scan_obj_t wifi_obj;
+
 static lv_res_t lv_bluetooth_setting(lv_obj_t *par)
 {
 
@@ -345,11 +367,42 @@ static void lv_calendar_setting_destroy(void)
 
 }
 
+static lv_res_t lv_lora_setting(lv_obj_t *par)
+{
+    static lv_wifi_struct_t lora_data[] = {
+        {.name = "Model", .get_val = get_s7xg_model},
+        {.name = "Version", .get_val = get_s7xg_ver},
+        {.name = "Join", .get_val = get_s7xg_join},
+    };
+
+    lv_obj_t *label = NULL;
+    char buff[256];
+    wifi_obj.wifi_cont = lv_obj_create(par, NULL);
+    lv_obj_set_size(wifi_obj.wifi_cont,  g_menu_view_width, g_menu_view_height);
+    lv_obj_set_style(wifi_obj.wifi_cont, &lv_style_transp_fit);
+    for (int i = 0; i < sizeof(lora_data) / sizeof(lora_data[0]); ++i) {
+
+        lora_data[i].label = lv_label_create(wifi_obj.wifi_cont, NULL);
+        snprintf(buff, sizeof(buff), "%s:%s", lora_data[i].name, lora_data[i].get_val());
+        lv_label_set_text(lora_data[i].label, buff);
+        if (!i)
+            lv_obj_align(lora_data[i].label, wifi_obj.wifi_cont, LV_ALIGN_IN_TOP_MID, 0, 0);
+        else
+            lv_obj_align(lora_data[i].label, lora_data[i - 1].label, LV_ALIGN_OUT_BOTTOM_MID, 0, 0);
+    }
+}
+
+static void  lv_lora_setting_destroy(void)
+{
+    lv_obj_del(wifi_obj.wifi_cont);
+}
+
 static lv_menu_struct_t menu_data[]  = {
 #if 01
     // {.name = "calendar", .callback = lv_calendar_setting, .destroy = lv_calendar_setting_destroy, .src_img = &img_calendar},
     // {.name = "ble", .callback = lv_bluetooth_setting, .destroy = lv_bluetooth_setting_destroy, .src_img = &img_ble},
     // {.name = "clock", .callback = lv_clock_setting, .destroy = lv_clock_setting_destroy, .src_img = &img_clock},
+    {.name = "LoRa", .callback = lv_lora_setting, .destroy = lv_lora_setting_destroy, .src_img = &img_lora},
     {.name = "WiFi", .callback = lv_wifi_setting, .destroy = lv_wifi_setting_destroy, .src_img = &img_wifi},
     {.name = "Power", .callback = lv_power_setting, .destroy = lv_power_setting_destroy, .src_img = &img_power},
     {.name = "Setting", .callback = lv_setting, .destroy = NULL, .src_img = &img_setting},
@@ -365,8 +418,7 @@ static lv_menu_struct_t menu_data[]  = {
 #endif
 };
 
-static lv_main_struct_t main_data;
-static lv_wifi_scan_obj_t wifi_obj;
+
 
 
 lv_res_t lv_timer_start(void (*timer_callback)(void *), uint32_t period, void *param)
@@ -393,8 +445,6 @@ static void batt_monitor_task()
     if (!monitor_handle)
         monitor_handle =  lv_task_create(monitor_callback, 5000, LV_TASK_PRIO_LOW, NULL);
 }
-
-
 
 static const void *lv_get_batt_icon()
 {
@@ -1046,9 +1096,9 @@ static lv_res_t lv_wifi_setting(lv_obj_t *par)
         snprintf(buff, sizeof(buff), "%s:%s", wifi_data[i].name, wifi_data[i].get_val());
         lv_label_set_text(wifi_data[i].label, buff);
         if (!i)
-            lv_obj_align(wifi_data[i].label, wifi_obj.wifi_cont, LV_ALIGN_IN_TOP_MID, 0,0);
+            lv_obj_align(wifi_data[i].label, wifi_obj.wifi_cont, LV_ALIGN_IN_TOP_MID, 0, 0);
         else
-            lv_obj_align(wifi_data[i].label, wifi_data[i - 1].label, LV_ALIGN_OUT_BOTTOM_MID, 0,0);
+            lv_obj_align(wifi_data[i].label, wifi_data[i - 1].label, LV_ALIGN_OUT_BOTTOM_MID, 0, 0);
     }
 
     lv_obj_t *scanbtn = lv_btn_create(wifi_obj.wifi_cont, NULL);

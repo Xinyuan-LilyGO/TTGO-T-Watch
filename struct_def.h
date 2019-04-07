@@ -3,6 +3,8 @@
 #ifndef __STRUCT_DEF_H
 #define __STRUCT_DEF_H
 #include <Arduino.h>
+#include <time.h>
+
 typedef enum {
     DIRECTION_TOP_EDGE        = 0,    /* Top edge of the board points towards the ceiling */
     DIRECTION_BOTTOM_EDGE     = 1,    /* Bottom edge of the board points towards the ceiling */
@@ -60,6 +62,12 @@ typedef enum {
     LVGL_POWER_IRQ,
     LVGL_POWER_ENTER_SLEEP,
 } power_event_t;
+
+typedef enum {
+    LVGL_TIME_UPDATE,
+    LVGL_TIME_ALARM,
+    LVGL_TIME_SYNC,
+} time_event_t;
 
 typedef struct  {
     double lng;
@@ -122,14 +130,17 @@ typedef struct {
     power_data_t data;
 } power_struct_t;
 
+typedef struct {
+    time_event_t event;
+    struct tm time;
+} time_struct_t;
 
-#include <time.h>
 typedef struct {
     union {
         gps_struct_t gps;
         wifi_struct_t wifi;
         motion_struct_t motion;
-        struct tm time;
+        time_struct_t time;
         file_struct_t file;
         power_struct_t power;
     };

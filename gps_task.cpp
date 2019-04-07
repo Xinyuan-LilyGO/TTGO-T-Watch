@@ -15,6 +15,7 @@ static TinyGPSPlus *gps = nullptr;
 static HardwareSerial gpsSerial(1);
 static gps_struct_t gps_data;
 static EventGroupHandle_t gpsEventGroup = NULL;
+extern void enableGPSPower(bool en);
 
 #define BIT0        0x01
 #define UPDATE_TIME 1000
@@ -68,6 +69,8 @@ static void gps_task(void *parameters)
             }
             while (gpsSerial.available()) {
                 // Serial.print(gpsSerial.read());
+                // String str = gpsSerial.readString();
+                // Serial.println(gpsSerial.read());
                 gps->encode(gpsSerial.read());
             }
             // Serial.println();
@@ -84,7 +87,7 @@ void gps_handle(void *data)
     switch (p->event) {
     case LVGL_GPS_START:
         //Turn on gps power
-        digitalWrite(GPS_PWD, HIGH);
+        enableGPSPower(true);
         gps_data.event = LVGL_GPS_WAIT_FOR_DATA;
         gpsSerial.printf("@GPPS<1>\r\n");
         delay(1000);
@@ -97,7 +100,8 @@ void gps_handle(void *data)
         Serial.println("[GPS] gps power off ...");
         xEventGroupClearBits(gpsEventGroup, BIT0);
         //Shutdown gps power
-        digitalWrite(GPS_PWD, LOW);
+        enableGPSPower(false);
+
         gps_data.event = LVGL_GPS_STOP;
         break;
     case LVGL_GPS_DATA_READY:
@@ -109,11 +113,6 @@ void gps_handle(void *data)
 
 void gps_task_init()
 {
-    //Init gps power pin
-    pinMode(GPS_PWD, OUTPUT);
-    //shutdown gps power
-    digitalWrite(GPS_PWD, LOW);
-
     gps = new TinyGPSPlus();
 
     gpsSerial.begin(115200, SERIAL_8N1, GPS_RX, GPS_TX);

@@ -32,7 +32,16 @@ TTGO T-Watch
 - [TinyGPSPlus](https://github.com/mikalhart/TinyGPSPlus)
 - [Lvgl](https://github.com/littlevgl/lv_arduino.git)
 - [AXP20X_Library](https://github.com/lewisxhe/AXP20X_Library)
+- [PCF8563_Library](https://github.com/lewisxhe/PCF8563_Library)
 - [BMA423](https://github.com/lewisxhe/BMA423-Arduino)
 
-
 ### The pictures and fonts used in the program are from the network. If there is any infringement, please inform the author.
+
+- config `lv_conf.h`
+- TFT-eSPI
+
+<!-- 9d0f68880adbaf80742182c551cab1a2d4bea7de -->
+<!-- lvgl -->
+
+<!-- 652383b694398d5379d4e3870e2f9d927f6a8bdc -->
+<!--  TFT-eSPI -->

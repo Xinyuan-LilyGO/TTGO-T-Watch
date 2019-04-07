@@ -99,6 +99,7 @@
 
 #define USER_BUTTON         36
 
+#define RTC_INT             26
 #endif
 
 #endif

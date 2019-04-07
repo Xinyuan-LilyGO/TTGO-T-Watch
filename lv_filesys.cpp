@@ -79,10 +79,12 @@ static void listDir(fs::FS &fs, const char *dirname, uint8_t levels)
 {
     File root = fs.open(dirname);
     if (!root) {
+        Serial.println("failed to open directory");
         lv_file_list_add(NULL, 0); //failed to open directory
         return;
     }
     if (!root.isDirectory()) {
+        Serial.println("not a directory");
         lv_file_list_add(NULL, 0); // not a directory
         return;
     }
@@ -94,6 +96,7 @@ static void listDir(fs::FS &fs, const char *dirname, uint8_t levels)
                 listDir(fs, file.name(), levels - 1);
             }
         } else {
+            Serial.println(file.name());
             lv_file_list_add(file.name(), FILE_TYPE);
         }
         file = root.openNextFile();

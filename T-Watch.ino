@@ -16,6 +16,7 @@
 #include "axp20x.h"
 #include <Button2.h>
 #include <SPI.h>
+#include <pcf8563.h>
 
 /*********************
  *      DEFINES
@@ -25,10 +26,11 @@
 
 
 /**********************
- * 
+ *
  *  STATIC VARIABLES
  **********************/
 AXP20X_Class axp;
+PCF8563_Class rtc;
 
 xQueueHandle g_event_queue_handle = NULL;
 static Ticker *wifiTicker = nullptr;
@@ -36,6 +38,7 @@ Ticker btnTicker;
 Button2 btn(USER_BUTTON);
 
 static bool stime_init();
+static void time_task(void *param);
 
 void wifi_event_setup()
 {
@@ -55,6 +58,7 @@ void wifi_event_setup()
 
     eventID = WiFi.onEvent([](WiFiEvent_t event, WiFiEventInfo_t info) {
         Serial.println("Connected to access point");
+
     }, WiFiEvent_t::SYSTEM_EVENT_STA_CONNECTED);
 
     eventID = WiFi.onEvent([](WiFiEvent_t event, WiFiEventInfo_t info) {
@@ -67,14 +71,100 @@ void wifi_event_setup()
     }, WiFiEvent_t::SYSTEM_EVENT_STA_GOT_IP);
 }
 
+
+
+bool syncRtcBySystemTime()
+{
+    struct tm info;
+    time_t now;
+    time(&now);
+    localtime_r(&now, &info);
+    if (info.tm_year > (2016 - 1900)) {
+        Serial.println("syncRtcBySystemTime");
+        //Month (starting from January, 0 for January) - Value range is [0,11]
+        rtc.setDateTime(info.tm_year, info.tm_mon + 1, info.tm_mday, info.tm_hour, info.tm_min, info.tm_sec);
+        return true;
+    }
+    return false;
+}
+
+
+void syncSystemTimeByRtc()
+{
+    struct tm t_tm;
+    struct timeval val;
+    RTC_Date dt = rtc.getDateTime();
+    t_tm.tm_hour = dt.hour;
+    t_tm.tm_min = dt.minute;
+    t_tm.tm_sec = dt.second;
+    t_tm.tm_year = dt.year - 1900;    //Year, whose value starts from 1900
+    t_tm.tm_mon = dt.month - 1;       //Month (starting from January, 0 for January) - Value range is [0,11]
+    t_tm.tm_mday = dt.day;
+    val.tv_sec = mktime(&t_tm);
+    val.tv_usec = 0;
+    settimeofday(&val, NULL);
+    Serial.print("get RTC DateTime:");
+    Serial.println(rtc.formatDateTime(PCF_TIMEFORMAT_YYYY_MM_DD_H_M_S));
+}
+
+
+bool flag;
+
 void setup()
 {
     Serial.begin(115200);
 
+#if 0
+    Wire1.begin(SEN_SDA, SEN_SCL);
+
+    axp.begin(Wire1);
+
+    rtc.begin(Wire1);
+
+    pinMode(RTC_INT, INPUT_PULLUP); //need change to rtc_pin
+
+    attachInterrupt(RTC_INT, []() {
+        Serial.println("RTC Alarm");
+        flag = 1;
+    }, FALLING);
+
+    rtc.disableAlarm();
+
+    Serial.print("STATUS2");
+
+    Serial.println(rtc.status2(), HEX);
+
+    rtc.setDateTime(2019, 4, 7, 9, 05, 50);
+
+    Serial.printf("Alarm is %s\n", rtc.alarmActive() ? "Enable" : "Disable");
+
+    rtc.setAlarmByMinutes(6);
+
+    rtc.enableAlarm();
+
+    Serial.print("STATUS2");
+
+    Serial.println(rtc.status2(), HEX);
+
+    Serial.printf("Alarm is %s\n", rtc.alarmActive() ? "Enable" : "Disable");
+
+    for (;;) {
+        Serial.print(rtc.formatDateTime());
+        Serial.print("  0x");
+        Serial.println(rtc.status2(), HEX);
+
+        if (flag) {
+            flag = 0;
+            detachInterrupt(RTC_INT);
+            rtc.resetAlarm();
+        }
+        delay(1000);
+    }
+#endif
 #if 1
     g_event_queue_handle = xQueueCreate(TASK_QUEUE_MESSAGE_LEN, sizeof(task_event_data_t));
 
-    SPI.begin(TFT_SCLK,TFT_MISO,TFT_MOSI,-1);
+    SPI.begin(TFT_SCLK, TFT_MISO, TFT_MOSI, -1);
 
     lv_filesystem_init();
 
@@ -86,7 +176,11 @@ void setup()
 
     backlight_init();
 
+    //BL Power
     axp.setPowerOutPut(AXP202_LDO2, AXP202_ON);
+
+    //GPS Power
+    // axp.setPowerOutPut(AXP202_LDO3, AXP202_ON);
 
     lv_create_ttgo();
 
@@ -107,6 +201,10 @@ void setup()
     axp.enableIRQ(AXP202_VBUS_REMOVED_IRQ | AXP202_VBUS_CONNECT_IRQ | AXP202_CHARGING_FINISHED_IRQ, AXP202_ON);
 
     axp.clearIRQ();
+
+    rtc.begin(Wire1);
+
+    syncSystemTimeByRtc();
 
     wifi_event_setup();
 
@@ -143,6 +241,9 @@ void setup()
     if (axp.isChargeing()) {
         charging_anim_start();
     }
+
+    xTaskCreate(time_task, "time", 2048, NULL, 20, NULL);
+
 #else
     gps_task_init();
 
@@ -233,7 +334,13 @@ void wifi_handle(void *data)
         wifiTicker->detach();
         delete wifiTicker;
         lv_wifi_connect_pass();
-        stime_init();
+        configTzTime("CST-8", "pool.ntp.org");
+
+        task_event_data_t event_data;
+        event_data.type = MESS_EVENT_TIME;
+        event_data.time.event = LVGL_TIME_SYNC;
+        xQueueSend(g_event_queue_handle, &event_data, portMAX_DELAY);
+
         break;
     case LVGL_WIFI_CONFIG_CONNECT_FAIL:
         Serial.println("Connect Fail,Power OFF WiFi");
@@ -326,11 +433,36 @@ void power_handle(void *param)
     }
 }
 
+void time_handle(void *param)
+{
+    bool rslt;
+    char time_buf[64];
+    char date_buf[64];
+    time_struct_t *p = (time_struct_t *)param;
+    switch (p->event) {
+        {
+        case LVGL_TIME_UPDATE:
+            if (lv_main_in()) {
+                strftime(time_buf, sizeof(time_buf), "%H:%M", &(p->time));
+                strftime(date_buf, sizeof(date_buf), "%a %d %b ", &(p->time));
+                lv_main_time_update(time_buf, date_buf);
+            }
+            break;
+        case LVGL_TIME_ALARM:
+            break;
+        case LVGL_TIME_SYNC:
+            do {
+                rslt = syncRtcBySystemTime();
+            } while (!rslt);
+            break;
+        default:
+            break;
+        }
+    }
+}
 
 void loop()
 {
-    char time_buf[64];
-    char date_buf[64];
     task_event_data_t event_data;
     for (;;) {
         if (xQueueReceive(g_event_queue_handle, &event_data, portMAX_DELAY) == pdPASS) {
@@ -355,16 +487,7 @@ void loop()
                 break;
             case MESS_EVENT_TIME:
                 // Serial.println("MESS_EVENT_TIME event");
-                if (lv_main_in()) {
-                    strftime(time_buf, sizeof(time_buf), "%H:%M", &event_data.time);
-                    strftime(date_buf, sizeof(date_buf), "%a %d %b ", &event_data.time);
-                    lv_main_time_update(time_buf, date_buf);
-
-                    // task_event_data_t event_data;
-                    // event_data.type = MESS_EVENT_MOTI;
-                    // event_data.motion.event = LVGL_MOTION_GET_TEMP;
-                    // xQueueSend(g_event_queue_handle, &event_data, portMAX_DELAY);
-                }
+                time_handle(&event_data.time);
                 break;
             case MESS_EVENT_POWER:
                 power_handle(&event_data.power);
@@ -377,17 +500,18 @@ void loop()
     }
 }
 
-void time_task(void *param)
+static void time_task(void *param)
 {
     struct tm time;
     uint8_t prev_min = 0;
     task_event_data_t event_data;
     Serial.println("Time Task Create ...");
-    configTzTime("CST-8", "pool.ntp.org");
+    // configTzTime("CST-8", "pool.ntp.org");
     for (;;) {
         if (getLocalTime(&time)) {
             event_data.type = MESS_EVENT_TIME;
-            event_data.time = time;
+            event_data.time.event = LVGL_TIME_UPDATE;
+            event_data.time.time = time;
             xQueueSend(g_event_queue_handle, &event_data, portMAX_DELAY);
         }
         delay(1000);
@@ -456,5 +580,21 @@ extern "C" const char *get_wifi_mac()
     return WiFi.macAddress().c_str();
 }
 
+extern "C" void enableGPSPower(bool en)
+{
+    axp.setPowerOutPut(AXP202_LDO3, en);
+}
 
+extern "C" const char *get_s7xg_model()
+{
+    return "s78G";
+}
+extern "C" const char *get_s7xg_ver()
+{
+    return "V1.08";
+}
+extern "C" const char *get_s7xg_join()
+{
+    return "unjoined";
+}
 
