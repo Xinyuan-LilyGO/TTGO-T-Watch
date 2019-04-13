@@ -25,9 +25,9 @@ static lv_fs_res_t pcfs_seek(void *file_p, uint32_t pos);
 static lv_fs_res_t pcfs_tell(void *file_p, uint32_t *pos_p);
 #endif
 
-
-
 extern xQueueHandle g_event_queue_handle;
+
+SPIClass SDSPI(VSPI);
 
 
 bool isSDVaild()
@@ -39,15 +39,16 @@ bool isSDVaild()
     return true;
 }
 
+
 bool sd_init()
 {
-    pinMode(SD_DETECT, INPUT_PULLUP);
-    if (digitalRead(SD_DETECT)) {
-        Serial.println("No Detect SD Card");
-        return false;
-    }
-
-    if (!f_dev.begin(SD_CS)) {
+    // pinMode(SD_DETECT, INPUT_PULLUP);
+    // if (digitalRead(SD_DETECT)) {
+    //     Serial.println("No Detect SD Card");
+    //     return false;
+    // }
+    SDSPI.begin(SD_SCLK, SD_MISO, SD_MOSI, SD_CS);
+    if (!f_dev.begin(SD_CS,SDSPI)) {
         Serial.println("Card Mount Failed");
         return false;
     }

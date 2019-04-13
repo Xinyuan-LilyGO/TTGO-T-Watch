@@ -3,9 +3,11 @@
 #define __BOARD_DEF_H
 
 // #define __DEBUG
+// #define TTGO_TWATCH_V10
+#define TTGO_TWATCH_V12
 
 // #include "gpio.h"
-#if 0
+#if defined(TTGO_TWATCH_V09)
 #define TFT_MISO    -1
 #define TFT_MOSI    19
 #define TFT_SCLK    18
@@ -41,8 +43,7 @@
 #define AMP_PWD     5
 
 #define USER_BUTTON 36
-#else
-
+#elif  defined(TTGO_TWATCH_V10)
 /*
  * SD Card | ESP32
  *    D2       12
@@ -100,6 +101,46 @@
 #define USER_BUTTON         36
 
 #define RTC_INT             26
+
+#elif  defined(TTGO_TWATCH_V12)
+
+#define TFT_MISO            -1  
+#define TFT_MOSI            19  
+#define TFT_SCLK            18  
+#define TFT_CS              5   
+#define TFT_DC              27  
+#define TFT_RST             -1  
+#define TFT_BL              12   
+
+#define SD_CS               13  
+#define SD_MISO             2
+#define SD_MOSI             15
+#define SD_SCLK             14
+#define SD_DETECT           4
+
+#define TP_INT              38
+
+#define I2C_SDA             23
+#define I2C_SCL             32
+
+#define SEN_SDA             21
+#define SEN_SCL             22
+
+#define AXP202_INT          35
+#define BMA423_INT1         39
+#define BMA423_INT2         0
+
+#define GPS_TX              33
+#define GPS_RX              34
+#define GPS_BANUD_RATE      115200
+
+#define S7XG_TX             33
+#define S7XG_RX             34
+#define S7XG_GPS_RST        -1
+
+#define USER_BUTTON         36
+
+#define RTC_INT             37
 #endif
 
 #endif

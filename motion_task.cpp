@@ -57,10 +57,10 @@ static void motion_task(void *param)
             uint32_t stepCount;
             uint16_t  rlst;
             // bma423_read_int_status(&int_status, &bmd4_dev);
-            // Serial.printf("Read MOTION_GET_SETP_BIT[0x%x]\n", int_status);
             do {
                 rlst = bma423_read_int_status(&int_status, &bmd4_dev);
             } while (rlst != BMA4_OK);
+            Serial.printf("Read MOTION_GET_SETP_BIT[0x%x]\n", int_status);
 
             if (int_status & BMA423_STEP_CNTR_INT) {
                 if (bma423_step_counter_output(&stepCount, &bmd4_dev) == BMA4_OK) {
@@ -109,6 +109,8 @@ bool motion_task_init()
 {
     uint16_t rslt = BMA4_OK;
 
+    motionEventGroup = xEventGroupCreate();
+
     //! configure i2c  触摸已经初始化了，i2c多线程调用将产生冲突
     // Wire1.begin(SEN_SDA, SEN_SCL);
     if (!scanI2Cdevice()) {
@@ -146,8 +148,6 @@ bool motion_task_init()
 
     configure_interrupt();
 
-    motionEventGroup = xEventGroupCreate();
-
     xTaskCreatePinnedToCore(motion_task, "motion", 4096, NULL, 20, NULL, 0);
 
     return true;
@@ -160,7 +160,7 @@ static void bma423_soft_reset()
     delay(5);
 }
 
-#define ENABLE_BMA_INT2
+#define ENABLE_BMA_INT1
 static uint16_t configure_interrupt()
 {
     uint16_t rslt = BMA4_OK;
@@ -170,22 +170,28 @@ static uint16_t configure_interrupt()
     rslt |= bma423_feature_enable(BMA423_STEP_CNTR, BMA4_ENABLE, &bmd4_dev);
     rslt |= bma423_feature_enable(BMA423_WAKEUP, BMA4_ENABLE, &bmd4_dev);
     rslt |= bma423_step_detector_enable(BMA4_ENABLE, &bmd4_dev);
+
 #ifdef ENABLE_BMA_INT1
     rslt |= bma423_map_interrupt(BMA4_INTR1_MAP, BMA423_STEP_CNTR_INT | BMA423_WAKEUP_INT, BMA4_ENABLE, &bmd4_dev);
+    Serial.printf("configure_interrupt rslt : %x\n", rslt);
+    struct bma4_int_pin_config config ;
+    config.edge_ctrl = BMA4_LEVEL_TRIGGER;
+    config.lvl = BMA4_ACTIVE_HIGH;//BMA4_ACTIVE_LOW;
+    config.od = BMA4_PUSH_PULL;
+    config.output_en = BMA4_OUTPUT_ENABLE;
+    config.input_en = BMA4_INPUT_DISABLE;
 #endif
 
 #ifdef ENABLE_BMA_INT2
     rslt |= bma423_map_interrupt(BMA4_INTR2_MAP, BMA423_STEP_CNTR_INT | BMA423_WAKEUP_INT, BMA4_ENABLE, &bmd4_dev);
-#endif
-
     Serial.printf("configure_interrupt rslt : %x\n", rslt);
-
     struct bma4_int_pin_config config ;
     config.edge_ctrl = BMA4_LEVEL_TRIGGER;
     config.lvl = BMA4_ACTIVE_LOW;
     config.od = BMA4_PUSH_PULL;
     config.output_en = BMA4_OUTPUT_ENABLE;
     config.input_en = BMA4_INPUT_DISABLE;
+#endif
 
 #ifdef ENABLE_BMA_INT1
     rslt |= bma4_set_int_pin_config(&config, BMA4_INTR1_MAP, &bmd4_dev);
@@ -198,7 +204,7 @@ static uint16_t configure_interrupt()
     Serial.printf("configure_interrupt rslt : %x\n", rslt);
 
 #ifdef ENABLE_BMA_INT1
-    pinMode(BMA423_INT1, INPUT_PULLUP);
+    pinMode(BMA423_INT1, INPUT);
     attachInterrupt(BMA423_INT1, [] {
         // Serial.println("attachInterrupt");
         BaseType_t xHigherPriorityTaskWoken = pdFALSE;
@@ -210,7 +216,7 @@ static uint16_t configure_interrupt()
         {
             portYIELD_FROM_ISR ();
         }
-    }, FALLING);
+    }, RISING/*FALLING*/);
 #endif
 
 #ifdef ENABLE_BMA_INT2

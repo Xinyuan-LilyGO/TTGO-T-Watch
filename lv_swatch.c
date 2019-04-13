@@ -70,8 +70,6 @@ int get_batt_percentage()
 {
     return 50;
 }
-
-
 int get_ld1_status()
 {
     return 1;
@@ -142,7 +140,15 @@ LV_IMG_DECLARE(img_setting);
 LV_IMG_DECLARE(img_wifi);
 LV_IMG_DECLARE(img_folder);
 LV_IMG_DECLARE(img_menu);
+
+
 LV_IMG_DECLARE(img_desktop);
+LV_IMG_DECLARE(img_desktop1);
+LV_IMG_DECLARE(img_desktop2);
+LV_IMG_DECLARE(img_desktop3);
+LV_IMG_DECLARE(img_bg0);
+LV_IMG_DECLARE(img_bg1);
+
 LV_IMG_DECLARE(img_directions);
 LV_IMG_DECLARE(img_direction_up);
 LV_IMG_DECLARE(img_direction_down);
@@ -402,12 +408,12 @@ static lv_menu_struct_t menu_data[]  = {
     // {.name = "calendar", .callback = lv_calendar_setting, .destroy = lv_calendar_setting_destroy, .src_img = &img_calendar},
     // {.name = "ble", .callback = lv_bluetooth_setting, .destroy = lv_bluetooth_setting_destroy, .src_img = &img_ble},
     // {.name = "clock", .callback = lv_clock_setting, .destroy = lv_clock_setting_destroy, .src_img = &img_clock},
+    {.name = "GPS", .callback = lv_gps_setting, .destroy = lv_gps_setting_destroy, .src_img = &img_placeholder},
     {.name = "LoRa", .callback = lv_lora_setting, .destroy = lv_lora_setting_destroy, .src_img = &img_lora},
     {.name = "WiFi", .callback = lv_wifi_setting, .destroy = lv_wifi_setting_destroy, .src_img = &img_wifi},
     {.name = "Power", .callback = lv_power_setting, .destroy = lv_power_setting_destroy, .src_img = &img_power},
     {.name = "Setting", .callback = lv_setting, .destroy = NULL, .src_img = &img_setting},
     {.name = "SD", .callback = lv_file_setting, .destroy = lv_file_setting_destroy, .src_img = &img_folder},
-    {.name = "GPS", .callback = lv_gps_setting, .destroy = lv_gps_setting_destroy, .src_img = &img_placeholder},
     {.name = "Sensor", .callback = lv_motion_setting, .destroy = lv_motion_setting_destroy, .src_img = &img_directions},
 #else
     {.name = "WIFI", .callback = lv_wifi_setting, .destroy = lv_wifi_setting_destroy, .src_img = SYMBOL_WIFI},
@@ -1273,7 +1279,7 @@ void create_menu(lv_obj_t *par)
     lv_obj_set_size(menu_cont, lv_obj_get_width(par), lv_obj_get_height(par));
 
     lv_obj_t *wp = lv_img_create(menu_cont, NULL);
-    lv_img_set_src(wp, &img_desktop);
+    lv_img_set_src(wp, &img_desktop2);
     lv_obj_set_width(wp, LV_HOR_RES);
     lv_obj_set_protect(wp, LV_PROTECT_POS);
 
@@ -1292,7 +1298,7 @@ void create_menu(lv_obj_t *par)
     lv_win_set_style(g_menu_win, LV_WIN_STYLE_BG, &style_txt);
 
     static const lv_point_t vp[] = {
-        {0, 0}, {1, 0}, {2, 0}, {3, 0}, {4, 0}, {5, 0}, {6, 0}, {7, 0},
+        {0, 0}, {1, 0}, {2, 0}, {3, 0}, {4, 0}, {5, 0}, {6, 0},// {7, 0},
         {LV_COORD_MIN, LV_COORD_MIN}
     };
 
@@ -1371,7 +1377,7 @@ void lv_create_ttgo()
     lv_obj_set_style(main_cont, &style);
 
     lv_obj_t *img = lv_img_create(main_cont, NULL);
-    lv_img_set_src(img, &img_ttgo);
+    lv_img_set_src(img, &img_bg0);
     lv_img_set_style(img, &style);
     lv_obj_align(img, main_cont, LV_ALIGN_CENTER, 0, 0);
 }
@@ -1396,7 +1402,7 @@ void lv_main(void)
         lv_obj_clean(main_cont);
 
     lv_obj_t *wp = lv_img_create(main_cont, NULL);
-    lv_img_set_src(wp, &img_desktop);
+    lv_img_set_src(wp, &img_bg1);
     lv_obj_set_width(wp, LV_HOR_RES);
     lv_obj_set_protect(wp, LV_PROTECT_POS);
 
@@ -1406,7 +1412,7 @@ void lv_main(void)
     style1.text.color = LV_COLOR_WHITE;
 
     main_data.time_label = lv_label_create(main_cont, NULL);
-    lv_label_set_text(main_data.time_label, "01:80");
+    lv_label_set_text(main_data.time_label, "08:30");
     lv_label_set_style(main_data.time_label, &style1);
     lv_obj_align(main_data.time_label, NULL, LV_ALIGN_CENTER, 0, -80);
 
@@ -1469,7 +1475,6 @@ void lv_main(void)
     lv_obj_align(menuBtn, NULL, LV_ALIGN_IN_BOTTOM_MID, 0, -30);
 
     batt_monitor_task();
-
 }
 
 

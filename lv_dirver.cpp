@@ -5,7 +5,7 @@
 #include <Adafruit_FT6206.h>
 #include <lvgl.h>
 #include "lv_setting.h"
-
+#include "freertos/FreeRTOS.h"
 
 static TFT_eSPI *tft = nullptr;
 static Adafruit_FT6206 *tp = nullptr;
@@ -16,30 +16,36 @@ static bool tpInit = false;
 static TimerHandle_t touch_handle = NULL;
 void touch_timer_callback( TimerHandle_t xTimer )
 {
+#ifdef DEBUG_DEMO
     if (touch_handle) {
         xTimerDelete(touch_handle, portMAX_DELAY);
         touch_handle = NULL;
         backlight_off();
     }
+#endif
 }
 
 void touch_timer_create()
 {
+#ifdef DEBUG_DEMO
     if (!touch_handle) {
         touch_handle =  xTimerCreate("tp", 10000 / portTICK_PERIOD_MS, pdTRUE, (void *)0, touch_timer_callback);
         xTimerStart(touch_handle, portMAX_DELAY);
     }
+#endif
 }
 
 static void touch_timer_reset()
 {
+#ifdef DEBUG_DEMO
     if (touch_handle)
         xTimerReset(touch_handle, portMAX_DELAY);
+#endif
 }
 
 static void ex_disp_flush(int32_t x1, int32_t y1, int32_t x2, int32_t y2, const lv_color_t *color_array)
 {
-#if 0
+#if 1
     uint32_t size = (x2 - x1 + 1) * (y2 - y1 + 1) * 2;
     tft->setAddrWindow(x1, y1, x2, y2);
     tft->pushColors((uint8_t *)color_array, size);
@@ -133,9 +139,6 @@ void display_init()
 
     touch_timer_create();
 }
-
-
-
 
 class FT5206_Class
 {
