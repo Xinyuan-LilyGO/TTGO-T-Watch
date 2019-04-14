@@ -35,8 +35,10 @@ QueueHandle_t g_event_queue_handle = NULL;
 static Ticker *wifiTicker = nullptr;
 Ticker btnTicker;
 Button2 btn(USER_BUTTON);
+Ticker pwmTicker;
+power_data_t data;
 
-static bool stime_init();
+
 static void time_task(void *param);
 
 void wifi_event_setup()
@@ -211,26 +213,6 @@ void startGPS()
 }
 
 
-// size_t printNumber(unsigned long n)
-// {
-//     char buf[8 * sizeof(long) + 1]; // Assumes 8-bit chars plus zero byte.
-//     char *str = &buf[sizeof(buf) - 1];
-
-//     *str = '\0';
-
-//     // prevent crash if called with base == 1
-//      uint8_t   base = 16;
-
-//     do {
-//         unsigned long m = n;
-//         n /= base;
-//         char c = m - base * n;
-//         *--str = c < 10 ? c + '0' : c + 'A' - 10;
-//     } while(n);
-
-//     return write(str);
-// }
-
 size_t toHexString(const char *str, uint8_t *buffer, size_t size)
 {
     if (!str)return 0;
@@ -307,7 +289,6 @@ void lora_test()
         snprintf(buff, sizeof(buff), "mac tx ucnf 15 %s", txBuf);
         Serial.printf("Send message %s\n", buff);
         waitForResp(buff, DEFALUT_ACK, DEFALUT_TIMEOUT);
-        // waitForResp("mac tx ucnf 15 4845494920574F524944", DEFALUT_ACK, DEFALUT_TIMEOUT);
         waitForResp(NULL, "\n\r>> tx_ok", DEFALUT_TIMEOUT * 2);
         delay(5000);
     }
@@ -403,7 +384,6 @@ void setup()
     }
 #endif
 
-#if 1
     g_event_queue_handle = xQueueCreate(TASK_QUEUE_MESSAGE_LEN, sizeof(task_event_data_t));
 
     SPI.begin(TFT_SCLK, TFT_MISO, TFT_MOSI, -1);
@@ -420,9 +400,6 @@ void setup()
 
     //BL Power
     axp.setPowerOutPut(AXP202_LDO2, AXP202_ON);
-
-    //GPS Power
-    // axp.setPowerOutPut(AXP202_LDO3, AXP202_ON);
 
     lv_create_ttgo();
 
@@ -544,8 +521,7 @@ void wifi_handle(void *data)
     }
 }
 
-Ticker pwmTicker;
-power_data_t data;
+
 
 void power_handle(void *param)
 {
@@ -667,6 +643,9 @@ void loop()
             case MESS_EVENT_POWER:
                 power_handle(&event_data.power);
                 break;
+            case MESS_EVENT_LORA:
+
+                break;
             default:
                 Serial.println("Error event");
                 break;
@@ -693,17 +672,6 @@ static void time_task(void *param)
     }
 }
 
-static bool stime_init()
-{
-    static bool isInit = false;
-    if (WiFi.status() != WL_CONNECTED ) {
-        return false;
-    }
-    if (isInit)return true;
-    isInit = true;
-    xTaskCreate(time_task, "time", 2048, NULL, 20, NULL);
-    return true;
-}
 
 extern "C" int get_batt_percentage()
 {

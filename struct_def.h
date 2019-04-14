@@ -23,6 +23,7 @@ typedef enum {
     MESS_EVENT_MOTI,
     MESS_EVENT_TIME,
     MESS_EVENT_POWER,
+    MESS_EVENT_LORA,
 } message_type_t;
 
 typedef enum {

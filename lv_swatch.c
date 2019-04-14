@@ -155,7 +155,7 @@ LV_IMG_DECLARE(img_direction_down);
 LV_IMG_DECLARE(img_direction_right);
 LV_IMG_DECLARE(img_direction_left);
 LV_IMG_DECLARE(img_step_conut);
-LV_IMG_DECLARE(img_temp);
+// LV_IMG_DECLARE(img_temp);
 
 LV_FONT_DECLARE(font_miami);
 LV_FONT_DECLARE(font_miami_32);
@@ -169,9 +169,9 @@ LV_IMG_DECLARE(img_batt3);
 LV_IMG_DECLARE(img_batt4);
 LV_IMG_DECLARE(img_ttgo);
 
-LV_IMG_DECLARE(img_ble);
-LV_IMG_DECLARE(img_clock);
-LV_IMG_DECLARE(img_calendar);
+// LV_IMG_DECLARE(img_ble);
+// LV_IMG_DECLARE(img_clock);
+// LV_IMG_DECLARE(img_calendar);
 LV_IMG_DECLARE(img_lora);
 
 
@@ -204,21 +204,9 @@ typedef struct {
     lv_obj_t *temp_label;
 } lv_main_struct_t;
 
-typedef struct {
-    lv_obj_t *wifi_cont;
-    lv_obj_t *scan_label;
-    lv_obj_t *preload;
-    lv_obj_t *wifilist;
-    lv_obj_t *passkb;
-} lv_wifi_scan_obj_t;
-
-
 static lv_obj_t *menu_cont = NULL;
 static lv_obj_t *main_cont = NULL;
 static lv_obj_t *g_menu_win = NULL;
-static lv_obj_t *setting_cont = NULL;
-static lv_obj_t *file_cont = NULL;
-static lv_obj_t *wifi_cont = NULL;
 static lv_obj_t *g_tileview = NULL;
 static int g_menu_view_width;
 static int g_menu_view_height;
@@ -228,6 +216,21 @@ static int prev = -1;
 #ifdef ESP32
 static wifi_auth_t auth;
 #endif
+static lv_main_struct_t main_data;
+static char buff[256];
+
+static lv_obj_t *img_batt = NULL;
+static lv_task_t *chaging_handle = NULL;
+static uint8_t changin_icons = 0;
+lv_task_t *monitor_handle = NULL;
+static bool gps_anim_started = false;
+static lv_obj_t *gps_anim_cont = NULL;
+
+/*****************************/
+static lv_obj_t *gContainer = NULL;
+static lv_obj_t *gObjecter = NULL;
+
+
 
 static lv_res_t lv_setting_backlight_action(lv_obj_t *obj, const char *txt);
 static lv_res_t lv_setting_th_action(lv_obj_t *obj);
@@ -240,6 +243,7 @@ static lv_res_t lv_gps_setting(lv_obj_t *par);
 static lv_res_t lv_wifi_setting(lv_obj_t *par);
 static lv_res_t lv_motion_setting(lv_obj_t *par);
 static lv_res_t lv_power_setting(lv_obj_t *par);
+static lv_res_t lv_lora_setting(lv_obj_t *par);
 
 static void lv_gps_setting_destroy();
 static void lv_wifi_setting_destroy();
@@ -247,9 +251,19 @@ static void lv_file_setting_destroy();
 static void lv_motion_setting_destroy();
 static void lv_connect_wifi(const char *password);
 static void lv_power_setting_destroy(void);
+static void  lv_lora_setting_destroy(void);
+static void  lv_setting_destroy(void);
+
 
 static void lv_menu_del();
 static const void *lv_get_batt_icon();
+
+static void *motion_img_src[4] = {
+    &img_direction_up,
+    &img_direction_down,
+    &img_direction_left,
+    &img_direction_right,
+};
 
 static lv_gps_struct_t gps_data[] = {
     {.name = "lat:"},
@@ -269,110 +283,21 @@ static lv_wifi_struct_t wifi_data[] = {
     {.name = "MAC", .get_val = get_wifi_mac},
 };
 
-static lv_res_t lv_bluetooth_setting(lv_obj_t *par);
-static lv_res_t lv_clock_setting(lv_obj_t *par);
-static lv_res_t lv_calendar_setting(lv_obj_t *par);
-static void lv_bluetooth_setting_destroy(void);
-static void lv_clock_setting_destroy(void);
-static void lv_calendar_setting_destroy(void);
+static lv_menu_struct_t menu_data[]  = {
+    {.name = "GPS", .callback = lv_gps_setting, .destroy = lv_gps_setting_destroy, .src_img = &img_placeholder},
+    {.name = "LoRa", .callback = lv_lora_setting, .destroy = lv_lora_setting_destroy, .src_img = &img_lora},
+    {.name = "WiFi", .callback = lv_wifi_setting, .destroy = lv_wifi_setting_destroy, .src_img = &img_wifi},
+    {.name = "Power", .callback = lv_power_setting, .destroy = lv_power_setting_destroy, .src_img = &img_power},
+    {.name = "Setting", .callback = lv_setting, .destroy = lv_setting_destroy, .src_img = &img_setting},
+    {.name = "SD", .callback = lv_file_setting, .destroy = lv_file_setting_destroy, .src_img = &img_folder},
+    {.name = "Sensor", .callback = lv_motion_setting, .destroy = lv_motion_setting_destroy, .src_img = &img_directions},
+};
 
-
-static lv_main_struct_t main_data;
-static lv_wifi_scan_obj_t wifi_obj;
-
-static lv_res_t lv_bluetooth_setting(lv_obj_t *par)
-{
-
-}
-static lv_res_t lv_clock_setting(lv_obj_t *par)
-{
-
-}
-static lv_res_t lv_calendar_setting(lv_obj_t *par)
-{
-    /*Create a Calendar object*/
-    lv_obj_t *calendar = lv_calendar_create(par, NULL);
-    // lv_obj_set_size(calendar, g_menu_view_width, g_menu_view_height);
-    lv_obj_set_size(calendar, 240, 220);
-    lv_obj_align(calendar, par, LV_ALIGN_OUT_TOP_MID, 0, -50);
-
-    /*Create a style for the current week*/
-    static lv_style_t style_week_box;
-    lv_style_copy(&style_week_box, &lv_style_plain);
-    style_week_box.body.border.width = 1;
-    style_week_box.body.border.color = LV_COLOR_HEX3(0x333);
-    style_week_box.body.empty = 1;
-    style_week_box.body.radius = LV_RADIUS_CIRCLE;
-    style_week_box.body.padding.ver = 3;
-    style_week_box.body.padding.hor = 3;
-
-    /*Create a style for today*/
-    static lv_style_t style_today_box;
-    lv_style_copy(&style_today_box, &lv_style_plain);
-    style_today_box.body.border.width = 2;
-    style_today_box.body.border.color = LV_COLOR_NAVY;
-    style_today_box.body.empty = 1;
-    style_today_box.body.radius = LV_RADIUS_CIRCLE;
-    style_today_box.body.padding.ver = 3;
-    style_today_box.body.padding.hor = 3;
-    style_today_box.text.color = LV_COLOR_BLUE;
-
-    /*Create a style for the highlighted days*/
-    static lv_style_t style_highlighted_day;
-    lv_style_copy(&style_highlighted_day, &lv_style_plain);
-    style_highlighted_day.body.border.width = 2;
-    style_highlighted_day.body.border.color = LV_COLOR_NAVY;
-    style_highlighted_day.body.empty = 1;
-    style_highlighted_day.body.radius = LV_RADIUS_CIRCLE;
-    style_highlighted_day.body.padding.ver = 3;
-    style_highlighted_day.body.padding.hor = 3;
-    style_highlighted_day.text.color = LV_COLOR_BLUE;
-
-    /*Apply the styles*/
-    lv_calendar_set_style(calendar, LV_CALENDAR_STYLE_WEEK_BOX, &style_week_box);
-    lv_calendar_set_style(calendar, LV_CALENDAR_STYLE_TODAY_BOX, &style_today_box);
-    lv_calendar_set_style(calendar, LV_CALENDAR_STYLE_HIGHLIGHTED_DAYS, &style_highlighted_day);
-
-
-    /*Set the today*/
-    lv_calendar_date_t today;
-    today.year = 2018;
-    today.month = 10;
-    today.day = 23;
-
-    lv_calendar_set_today_date(calendar, &today);
-    lv_calendar_set_showed_date(calendar, &today);
-
-    /*Highlight some days*/
-    static lv_calendar_date_t highlihted_days[3];       /*Only it's pointer will be saved so should be static*/
-    highlihted_days[0].year = 2018;
-    highlihted_days[0].month = 10;
-    highlihted_days[0].day = 6;
-
-    highlihted_days[1].year = 2018;
-    highlihted_days[1].month = 10;
-    highlihted_days[1].day = 11;
-
-    highlihted_days[2].year = 2018;
-    highlihted_days[2].month = 11;
-    highlihted_days[2].day = 22;
-
-    lv_calendar_set_highlighted_dates(calendar, highlihted_days, 3);
-}
-
-static void lv_bluetooth_setting_destroy(void)
-{
-
-}
-static void lv_clock_setting_destroy(void)
-{
-
-}
-static void lv_calendar_setting_destroy(void)
-{
-
-}
-
+/*********************************************************************
+ *
+ *                          LORA
+ *
+ * ******************************************************************/
 static lv_res_t lv_lora_setting(lv_obj_t *par)
 {
     static lv_wifi_struct_t lora_data[] = {
@@ -382,17 +307,16 @@ static lv_res_t lv_lora_setting(lv_obj_t *par)
     };
 
     lv_obj_t *label = NULL;
-    char buff[256];
-    wifi_obj.wifi_cont = lv_obj_create(par, NULL);
-    lv_obj_set_size(wifi_obj.wifi_cont,  g_menu_view_width, g_menu_view_height);
-    lv_obj_set_style(wifi_obj.wifi_cont, &lv_style_transp_fit);
+    gContainer = lv_obj_create(par, NULL);
+    lv_obj_set_size(gContainer,  g_menu_view_width, g_menu_view_height);
+    lv_obj_set_style(gContainer, &lv_style_transp_fit);
     for (int i = 0; i < sizeof(lora_data) / sizeof(lora_data[0]); ++i) {
 
-        lora_data[i].label = lv_label_create(wifi_obj.wifi_cont, NULL);
+        lora_data[i].label = lv_label_create(gContainer, NULL);
         snprintf(buff, sizeof(buff), "%s:%s", lora_data[i].name, lora_data[i].get_val());
         lv_label_set_text(lora_data[i].label, buff);
         if (!i)
-            lv_obj_align(lora_data[i].label, wifi_obj.wifi_cont, LV_ALIGN_IN_TOP_MID, 0, 0);
+            lv_obj_align(lora_data[i].label, gContainer, LV_ALIGN_IN_TOP_MID, 0, 0);
         else
             lv_obj_align(lora_data[i].label, lora_data[i - 1].label, LV_ALIGN_OUT_BOTTOM_MID, 0, 0);
     }
@@ -400,33 +324,15 @@ static lv_res_t lv_lora_setting(lv_obj_t *par)
 
 static void  lv_lora_setting_destroy(void)
 {
-    lv_obj_del(wifi_obj.wifi_cont);
+    lv_obj_del(gContainer);
+    gContainer = NULL;
 }
 
-static lv_menu_struct_t menu_data[]  = {
-#if 01
-    // {.name = "calendar", .callback = lv_calendar_setting, .destroy = lv_calendar_setting_destroy, .src_img = &img_calendar},
-    // {.name = "ble", .callback = lv_bluetooth_setting, .destroy = lv_bluetooth_setting_destroy, .src_img = &img_ble},
-    // {.name = "clock", .callback = lv_clock_setting, .destroy = lv_clock_setting_destroy, .src_img = &img_clock},
-    {.name = "GPS", .callback = lv_gps_setting, .destroy = lv_gps_setting_destroy, .src_img = &img_placeholder},
-    {.name = "LoRa", .callback = lv_lora_setting, .destroy = lv_lora_setting_destroy, .src_img = &img_lora},
-    {.name = "WiFi", .callback = lv_wifi_setting, .destroy = lv_wifi_setting_destroy, .src_img = &img_wifi},
-    {.name = "Power", .callback = lv_power_setting, .destroy = lv_power_setting_destroy, .src_img = &img_power},
-    {.name = "Setting", .callback = lv_setting, .destroy = NULL, .src_img = &img_setting},
-    {.name = "SD", .callback = lv_file_setting, .destroy = lv_file_setting_destroy, .src_img = &img_folder},
-    {.name = "Sensor", .callback = lv_motion_setting, .destroy = lv_motion_setting_destroy, .src_img = &img_directions},
-#else
-    {.name = "WIFI", .callback = lv_wifi_setting, .destroy = lv_wifi_setting_destroy, .src_img = SYMBOL_WIFI},
-    {.name = "Setting", .callback = lv_setting, .destroy = NULL, .src_img = SYMBOL_SETTINGS},
-    {.name = "SD", .callback = lv_file_setting, .destroy = lv_file_setting_destroy, .src_img = SYMBOL_DIRECTORY},
-    {.name = "GPS", .callback = lv_gps_setting, .destroy = lv_gps_setting_destroy, .src_img = SYMBOL_GPS},
-    {.name = "monitor", .callback = lv_motion_setting, .destroy = lv_motion_setting_destroy, .src_img = SYMBOL_PLAY}
-#endif
-};
-
-
-
-
+/*********************************************************************
+ *
+ *                          OHTER
+ *
+ * ******************************************************************/
 lv_res_t lv_timer_start(void (*timer_callback)(void *), uint32_t period, void *param)
 {
     lv_task_t *handle =  lv_task_create(timer_callback, period, LV_TASK_PRIO_LOW, param);
@@ -434,11 +340,24 @@ lv_res_t lv_timer_start(void (*timer_callback)(void *), uint32_t period, void *p
     return LV_RES_OK;
 }
 
-static lv_obj_t *img_batt = NULL;
-static lv_task_t *chaging_handle = NULL;
-static uint8_t changin_icons = 0;
-lv_task_t *monitor_handle = NULL;
 
+static lv_point_t lv_font_get_size(lv_obj_t *obj)
+{
+    lv_style_t *style = lv_obj_get_style(obj);
+    const lv_font_t *font = style->text.font;
+    lv_label_ext_t *ext = lv_obj_get_ext_attr(obj);
+    lv_point_t size;
+    lv_txt_flag_t flag = LV_TXT_FLAG_NONE;
+    if (ext->recolor != 0) flag |= LV_TXT_FLAG_RECOLOR;
+    if (ext->expand != 0) flag |= LV_TXT_FLAG_EXPAND;
+    lv_txt_get_size(&size, ext->text, font, style->text.letter_space, style->text.line_space, LV_COORD_MAX, flag);
+    return size;
+}
+/*********************************************************************
+ *
+ *                          BATTERY
+ *
+ * ******************************************************************/
 static void monitor_callback(void *prarm)
 {
     if (g_menu_in) {
@@ -500,29 +419,12 @@ void charging_anim_start()
 }
 
 
-static lv_point_t lv_font_get_size(lv_obj_t *obj)
-{
-    lv_style_t *style = lv_obj_get_style(obj);
-    const lv_font_t *font = style->text.font;
-    lv_label_ext_t *ext = lv_obj_get_ext_attr(obj);
-    lv_point_t size;
-    lv_txt_flag_t flag = LV_TXT_FLAG_NONE;
-    if (ext->recolor != 0) flag |= LV_TXT_FLAG_RECOLOR;
-    if (ext->expand != 0) flag |= LV_TXT_FLAG_EXPAND;
-    lv_txt_get_size(&size, ext->text, font, style->text.letter_space, style->text.line_space, LV_COORD_MAX, flag);
-    return size;
-}
+
 /*********************************************************************
  *
  *                          POWER
  *
  * ******************************************************************/
-typedef struct {
-    lv_obj_t *cont;
-    lv_obj_t *img;
-} lv_power_struct_t;
-
-lv_power_struct_t pwm_data;
 
 typedef struct {
     int base;
@@ -555,7 +457,6 @@ enum {
 
 void lv_update_power_info(power_data_t *data)
 {
-    char buff[128];
     snprintf(buff, sizeof(buff), "%.2f", data->vbus_vol);
     lv_label_set_text(list[LV_VBUS_VOL_INDEX].label, buff);
 
@@ -571,9 +472,9 @@ void lv_update_power_info(power_data_t *data)
 
 static lv_res_t lv_power_setting(lv_obj_t *par)
 {
-    pwm_data.cont = lv_obj_create(g_menu_win, NULL);
-    lv_obj_set_size(pwm_data.cont,  g_menu_view_width, g_menu_view_height);
-    lv_obj_set_style(pwm_data.cont, &lv_style_transp_fit);
+    gContainer = lv_obj_create(g_menu_win, NULL);
+    lv_obj_set_size(gContainer,  g_menu_view_width, g_menu_view_height);
+    lv_obj_set_style(gContainer, &lv_style_transp_fit);
 
     static lv_style_t style_txt;
     lv_style_copy(&style_txt, &lv_style_plain);
@@ -583,12 +484,12 @@ static lv_res_t lv_power_setting(lv_obj_t *par)
     style_txt.text.color = LV_COLOR_HEX(0xffffff);
 
     for (int i = 0; i < sizeof(list) / sizeof(list[0]); i++) {
-        list[i].label = lv_label_create(pwm_data.cont, NULL);
+        list[i].label = lv_label_create(gContainer, NULL);
         lv_label_set_text(list[i].label, list[i].txt);
         if ( list[i].base != -1)
             lv_obj_align( list[i].label, list[list[i].base].label, list[i].align, list[i].x, list[i].y);
         else
-            lv_obj_align( list[i].label, pwm_data.cont, LV_ALIGN_IN_TOP_MID, list[i].x, list[i].y);
+            lv_obj_align( list[i].label, gContainer, LV_ALIGN_IN_TOP_MID, list[i].x, list[i].y);
         lv_obj_set_style(list[i].label, &style_txt);
     }
 
@@ -621,7 +522,7 @@ static lv_res_t lv_power_setting(lv_obj_t *par)
 
     for (int i = 0; i < sizeof(state) / sizeof(state[0]); i++) {
         if (state[i].base == -2) {
-            state[i].label  = lv_led_create(pwm_data.cont, NULL);
+            state[i].label  = lv_led_create(gContainer, NULL);
             lv_obj_set_size(state[i].label, 10, 10);
             lv_obj_set_style(state[i].label, &style_led);
             lv_obj_align( state[i].label, state[i - 1].label, state[i].align, state[i].x, state[i].y);
@@ -633,12 +534,12 @@ static lv_res_t lv_power_setting(lv_obj_t *par)
             }
 
         } else {
-            state[i].label = lv_label_create(pwm_data.cont, NULL);
+            state[i].label = lv_label_create(gContainer, NULL);
             lv_label_set_text(state[i].label, state[i].txt);
             if ( state[i].base != -1)
                 lv_obj_align( state[i].label, state[state[i].base].label, state[i].align, state[i].x, state[i].y);
             else
-                lv_obj_align( state[i].label, pwm_data.cont, LV_ALIGN_IN_TOP_MID, state[i].x, state[i].y);
+                lv_obj_align( state[i].label, gContainer, LV_ALIGN_IN_TOP_MID, state[i].x, state[i].y);
             lv_obj_set_style(state[i].label, &style_txt);
         }
     }
@@ -660,45 +561,34 @@ static void lv_power_setting_destroy(void)
     event_data.power.event = LVGL_POWER_MOINITOR_STOP;
     xQueueSend(g_event_queue_handle, &event_data, portMAX_DELAY);
 #endif
-    lv_obj_del(pwm_data.cont);
+    lv_obj_del(gContainer);
+    gContainer = NULL;
 }
 
 /*********************************************************************
  *
- *                          MONITOR
+ *                          Sensor
  *
  * ******************************************************************/
-typedef struct {
-    lv_obj_t *motion_cont;
-    lv_obj_t *img;
-} lv_motion_struct_t;
-
-lv_motion_struct_t motion_obj;
-
-static void *motion_img_src[4] = {
-    &img_direction_up,
-    &img_direction_down,
-    &img_direction_left,
-    &img_direction_right,
-};
-
 void motion_dir_update(uint8_t index)
 {
-    if (index > sizeof(motion_img_src) / sizeof(motion_img_src[0]))
+    if (index >= sizeof(motion_img_src) / sizeof(motion_img_src[0]))
         return;
-    lv_img_set_src(motion_obj.img, motion_img_src[index]);
-    lv_obj_align(motion_obj.img, NULL, LV_ALIGN_CENTER, 0, 0);
+    if (!gObjecter)
+        return;
+    lv_img_set_src(gObjecter, motion_img_src[index]);
+    lv_obj_align(gObjecter, NULL, LV_ALIGN_CENTER, 0, 0);
 }
 
 static lv_res_t lv_motion_setting(lv_obj_t *par)
 {
-    motion_obj.motion_cont = lv_obj_create(g_menu_win, NULL);
-    lv_obj_set_size(motion_obj.motion_cont,  g_menu_view_width, g_menu_view_height);
-    lv_obj_set_style(motion_obj.motion_cont, &lv_style_transp_fit);
+    gContainer = lv_obj_create(g_menu_win, NULL);
+    lv_obj_set_size(gContainer,  g_menu_view_width, g_menu_view_height);
+    lv_obj_set_style(gContainer, &lv_style_transp_fit);
 
-    motion_obj.img = lv_img_create(motion_obj.motion_cont, NULL);
-    lv_img_set_src(motion_obj.img, motion_img_src[0]);
-    lv_obj_align(motion_obj.img, NULL, LV_ALIGN_CENTER, 0, 0);
+    gObjecter = lv_img_create(gContainer, NULL);
+    lv_img_set_src(gObjecter, motion_img_src[0]);
+    lv_obj_align(gObjecter, NULL, LV_ALIGN_CENTER, 0, 0);
 
 #ifdef ESP32
     task_event_data_t event_data;
@@ -717,7 +607,9 @@ static void lv_motion_setting_destroy(void)
     event_data.motion.event = LVGL_MOTION_STOP;
     xQueueSend(g_event_queue_handle, &event_data, portMAX_DELAY);
 #endif
-    lv_obj_del(motion_obj.motion_cont);
+    lv_obj_del(gContainer);
+    gContainer = NULL;
+    gObjecter = NULL;
 }
 
 /*********************************************************************
@@ -729,7 +621,6 @@ uint8_t lv_gps_static_text_update(void *data)
 {
 #ifdef ESP32
     gps_struct_t *gps = (gps_struct_t *)data;
-    char buff[128];
 
     snprintf(buff, sizeof(buff), "%.2f", gps->lat);
     lv_label_set_text(gps_data[0].label, buff);
@@ -759,8 +650,9 @@ uint8_t lv_gps_static_text_update(void *data)
     snprintf(buff, sizeof(buff), "%.2f", gps->speed);
     lv_label_set_text(gps_data[6].label, buff);
 #endif
-
 }
+
+
 
 static lv_res_t lv_gps_static_text(lv_obj_t *par)
 {
@@ -787,13 +679,8 @@ static lv_res_t lv_gps_static_text(lv_obj_t *par)
         lv_obj_align(gps_data[i].label, NULL, LV_ALIGN_IN_TOP_LEFT, lv_obj_get_width(cont) / 2, u_offset * setup);
         ++setup;
     }
-
     return LV_RES_OK;
 }
-
-static bool gps_anim_started = false;
-static lv_obj_t *gps_anim_cont = NULL;
-
 
 void gps_anim_close()
 {
@@ -806,11 +693,6 @@ void gps_anim_close()
 void gps_create_static_text()
 {
     lv_gps_static_text(g_menu_win);
-}
-
-static void gps_static_text_call(void *param)
-{
-    lv_gps_static_text(param);
 }
 
 static lv_res_t lv_gps_anim_start(lv_obj_t *par)
@@ -988,11 +870,11 @@ static void create_keyboard()
 static void lv_connect_wifi(const char *password)
 {
     lv_obj_set_hidden(g_menu_win, false);
-    lv_obj_clean(wifi_obj.wifi_cont);
+    lv_obj_clean(gContainer);
 
-    wifi_connect_label = lv_label_create(wifi_obj.wifi_cont, NULL);
+    wifi_connect_label = lv_label_create(gContainer, NULL);
     lv_label_set_text(wifi_connect_label, "Connecting...");
-    lv_obj_align(wifi_connect_label, wifi_obj.wifi_cont, LV_ALIGN_CENTER, 0, 0);
+    lv_obj_align(wifi_connect_label, gContainer, LV_ALIGN_CENTER, 0, 0);
 
 #ifdef ESP32
     strlcpy(auth.password, password, sizeof(auth.password));
@@ -1008,22 +890,23 @@ static void lv_connect_wifi(const char *password)
 static void lv_refs_wifi(void *param)
 {
     lv_obj_set_hidden(g_menu_win, false);
-    lv_obj_del(wifi_obj.wifi_cont);
-    wifi_obj.wifilist = NULL;
+    lv_obj_del(gContainer);
+    gContainer = NULL;
+    gObjecter = NULL;
     lv_wifi_setting(g_menu_win);
 }
 
 void lv_wifi_connect_fail()
 {
     lv_label_set_text(wifi_connect_label, "Connect FAIL");
-    lv_obj_align(wifi_connect_label, wifi_obj.wifi_cont, LV_ALIGN_CENTER, 0, -10);
+    lv_obj_align(wifi_connect_label, gContainer, LV_ALIGN_CENTER, 0, -10);
     lv_timer_start(lv_refs_wifi, 800, NULL);
 }
 
 void lv_wifi_connect_pass()
 {
     lv_label_set_text(wifi_connect_label, "Connect PASS");
-    lv_obj_align(wifi_connect_label, wifi_obj.wifi_cont, LV_ALIGN_CENTER, 0, -10);
+    lv_obj_align(wifi_connect_label, gContainer, LV_ALIGN_CENTER, 0, -10);
     lv_timer_start(lv_refs_wifi, 800, NULL);
 }
 
@@ -1032,13 +915,12 @@ void lv_wifi_connect_pass()
  *                          WIFI
  *
  * ******************************************************************/
-static lv_obj_t *wifi_scan_label = NULL;
-
 static void lv_wifi_setting_destroy()
 {
     printf("wifi setting destroy\n");
-    lv_obj_del(wifi_obj.wifi_cont);
-    wifi_obj.wifilist = NULL;
+    lv_obj_del(gContainer);
+    gContainer = NULL;
+    gObjecter = NULL;
 }
 
 static lv_res_t wifiap_list_action(lv_obj_t *obj)
@@ -1057,15 +939,15 @@ static lv_res_t wifiap_list_action(lv_obj_t *obj)
 
 uint8_t lv_wifi_list_add(const char *ssid, int32_t rssi, uint8_t ch)
 {
-    if (!wifi_obj.wifilist) {
-        lv_obj_clean(wifi_obj.wifi_cont);
-        wifi_obj.wifilist = lv_list_create(wifi_obj.wifi_cont, NULL);
-        lv_obj_set_size(wifi_obj.wifilist,  g_menu_view_width, g_menu_view_height);
-        lv_obj_align(wifi_obj.wifilist, wifi_obj.wifi_cont, LV_ALIGN_CENTER, 0, 0);
-        lv_obj_set_style(wifi_obj.wifilist, &lv_style_transp_fit);
+    if (!gObjecter) {
+        lv_obj_clean(gContainer);
+        gObjecter = lv_list_create(gContainer, NULL);
+        lv_obj_set_size(gObjecter,  g_menu_view_width, g_menu_view_height);
+        lv_obj_align(gObjecter, gContainer, LV_ALIGN_CENTER, 0, 0);
+        lv_obj_set_style(gObjecter, &lv_style_transp_fit);
 
     }
-    lv_list_add(wifi_obj.wifilist, SYMBOL_WIFI, ssid, wifiap_list_action);
+    lv_list_add(gObjecter, SYMBOL_WIFI, ssid, wifiap_list_action);
     return LV_RES_OK;
 }
 
@@ -1076,8 +958,8 @@ static lv_res_t wifi_scan_btn_cb(struct _lv_obj_t *obj)
     event_data.type = MESS_EVENT_WIFI;
     event_data.wifi.event = LVGL_WIFI_CONFIG_SCAN;
     xQueueSend(g_event_queue_handle, &event_data, portMAX_DELAY);
-    lv_obj_clean(wifi_obj.wifi_cont);
-    lv_obj_t *label = lv_label_create(wifi_obj.wifi_cont, NULL);
+    lv_obj_clean(gContainer);
+    lv_obj_t *label = lv_label_create(gContainer, NULL);
     lv_label_set_text(label, "Scaning...");
     lv_obj_align(label, NULL, LV_ALIGN_CENTER, 0, -10);
 #else
@@ -1092,23 +974,22 @@ static lv_res_t wifi_scan_btn_cb(struct _lv_obj_t *obj)
 static lv_res_t lv_wifi_setting(lv_obj_t *par)
 {
     lv_obj_t *label = NULL;
-    char buff[256];
-    wifi_obj.wifi_cont = lv_obj_create(par, NULL);
-    lv_obj_set_size(wifi_obj.wifi_cont,  g_menu_view_width, g_menu_view_height);
-    lv_obj_set_style(wifi_obj.wifi_cont, &lv_style_transp_fit);
+    gContainer = lv_obj_create(par, NULL);
+    lv_obj_set_size(gContainer,  g_menu_view_width, g_menu_view_height);
+    lv_obj_set_style(gContainer, &lv_style_transp_fit);
     for (int i = 0; i < sizeof(wifi_data) / sizeof(wifi_data[0]); ++i) {
 
-        wifi_data[i].label = lv_label_create(wifi_obj.wifi_cont, NULL);
+        wifi_data[i].label = lv_label_create(gContainer, NULL);
         snprintf(buff, sizeof(buff), "%s:%s", wifi_data[i].name, wifi_data[i].get_val());
         lv_label_set_text(wifi_data[i].label, buff);
         if (!i)
-            lv_obj_align(wifi_data[i].label, wifi_obj.wifi_cont, LV_ALIGN_IN_TOP_MID, 0, 0);
+            lv_obj_align(wifi_data[i].label, gContainer, LV_ALIGN_IN_TOP_MID, 0, 0);
         else
             lv_obj_align(wifi_data[i].label, wifi_data[i - 1].label, LV_ALIGN_OUT_BOTTOM_MID, 0, 0);
     }
 
-    lv_obj_t *scanbtn = lv_btn_create(wifi_obj.wifi_cont, NULL);
-    lv_obj_align(scanbtn, wifi_obj.wifi_cont, LV_ALIGN_IN_BOTTOM_MID, 0, 0);
+    lv_obj_t *scanbtn = lv_btn_create(gContainer, NULL);
+    lv_obj_align(scanbtn, gContainer, LV_ALIGN_IN_BOTTOM_MID, 0, 0);
     lv_obj_set_size(scanbtn, 100, 25);
     label = lv_label_create(scanbtn, NULL);
     lv_label_set_text(label, "Scan");
@@ -1123,49 +1004,44 @@ static lv_res_t lv_wifi_setting(lv_obj_t *par)
  *                          FILE
  *
  * ******************************************************************/
-typedef struct {
-    lv_obj_t *cont;
-    lv_obj_t *list;
-} lv_file_struct_t;
-
-static lv_file_struct_t  file;
 
 static void lv_file_setting_destroy(void)
 {
-    lv_obj_del(file.cont);
-    memset(&file, 0, sizeof(file));
+    lv_obj_del(gContainer);
+    gContainer = NULL;
+    gObjecter = NULL;
     printf("lv_file_setting_destroy\n");
 }
 
 void lv_file_list_add(const char *filename, uint8_t type)
 {
     if (!filename) {
-        lv_obj_t *label = lv_label_create(file.cont, NULL);
+        lv_obj_t *label = lv_label_create(gContainer, NULL);
         lv_label_set_text(label, "SD Card not found");
         lv_obj_align(label, NULL, LV_ALIGN_CENTER, 0, 0);
     } else {
-        if (!file.list) {
-            file.list = lv_list_create(file.cont, NULL);
-            lv_obj_set_size(file.list,  g_menu_view_width, g_menu_view_height);
-            lv_obj_align(file.list, NULL, LV_ALIGN_CENTER, 0, 0);
-            lv_style_t *style = lv_list_get_style(file.list, LV_LIST_STYLE_BTN_REL);
+        if (!gObjecter) {
+            gObjecter = lv_list_create(gContainer, NULL);
+            lv_obj_set_size(gObjecter,  g_menu_view_width, g_menu_view_height);
+            lv_obj_align(gObjecter, NULL, LV_ALIGN_CENTER, 0, 0);
+            lv_style_t *style = lv_list_get_style(gObjecter, LV_LIST_STYLE_BTN_REL);
             style->body.padding.ver = 10;
-            lv_list_set_style(file.list, LV_LIST_STYLE_BTN_REL, style);
+            lv_list_set_style(gObjecter, LV_LIST_STYLE_BTN_REL, style);
         }
-        if (file.list) {
+        if (gObjecter) {
             if (type)
-                lv_list_add(file.list, SYMBOL_DIRECTORY, filename, NULL);
+                lv_list_add(gObjecter, SYMBOL_DIRECTORY, filename, NULL);
             else
-                lv_list_add(file.list, SYMBOL_FILE, filename, NULL);
+                lv_list_add(gObjecter, SYMBOL_FILE, filename, NULL);
         }
     }
 }
 
 static lv_res_t lv_file_setting(lv_obj_t *par)
 {
-    file.cont = lv_cont_create(par, NULL);
-    lv_obj_set_style(file.cont, &lv_style_transp_fit);
-    lv_obj_set_size(file.cont,  g_menu_view_width, g_menu_view_height);
+    gContainer = lv_cont_create(par, NULL);
+    lv_obj_set_style(gContainer, &lv_style_transp_fit);
+    lv_obj_set_size(gContainer,  g_menu_view_width, g_menu_view_height);
 #ifdef ESP32
     task_event_data_t event_data;
     event_data.type = MESS_EVENT_FILE;
@@ -1190,29 +1066,29 @@ static lv_res_t lv_setting(lv_obj_t *par)
 {
     printf("Create lv_setting\n");
     //! backlight level
-    setting_cont = lv_cont_create(par, NULL);
-    lv_obj_set_size(setting_cont,  g_menu_view_width, g_menu_view_height);
-    lv_obj_set_style(setting_cont, &lv_style_transp_fit);
+    gContainer = lv_cont_create(par, NULL);
+    lv_obj_set_size(gContainer,  g_menu_view_width, g_menu_view_height);
+    lv_obj_set_style(gContainer, &lv_style_transp_fit);
 
 
     lv_obj_t *label;
-    label = lv_label_create(setting_cont, NULL);
+    label = lv_label_create(gContainer, NULL);
     lv_label_set_text(label, "BL:");
     lv_obj_align(label, NULL, LV_ALIGN_IN_TOP_LEFT, 0, 40);
 
     static const char *btnm_str[] = {"1", "2", "3", ""};
-    lv_obj_t *btnm = lv_btnm_create(setting_cont, NULL);
+    lv_obj_t *btnm = lv_btnm_create(gContainer, NULL);
     lv_obj_set_size(btnm, 150, 50);
     lv_btnm_set_map(btnm, btnm_str);
     lv_obj_align(btnm, label, LV_ALIGN_OUT_RIGHT_MID, 30, 0);
     lv_btnm_set_toggle(btnm, true, 3);
     lv_btnm_set_action(btnm, lv_setting_backlight_action);
 
-    label = lv_label_create(setting_cont, NULL);
+    label = lv_label_create(gContainer, NULL);
     lv_label_set_text(label, "TH:");
     lv_obj_align(label, NULL, LV_ALIGN_IN_TOP_LEFT, 0, 100);
 
-    lv_obj_t *ddlist = lv_ddlist_create(setting_cont, NULL);
+    lv_obj_t *ddlist = lv_ddlist_create(gContainer, NULL);
     lv_obj_align(ddlist, label, LV_ALIGN_OUT_RIGHT_MID, 30, 0);
     lv_ddlist_set_options(ddlist, "Alien\nNight\nMono\nNemo\nMaterial");
     lv_ddlist_set_fix_height(ddlist, LV_DPI);
@@ -1224,7 +1100,13 @@ static lv_res_t lv_setting(lv_obj_t *par)
     return LV_RES_OK;
 }
 
-
+static void lv_setting_destroy(void)
+{
+    lv_obj_del(gContainer);
+    gContainer = NULL;
+    gObjecter = NULL;
+    printf("lv_setting_destroy\n");
+}
 /*********************************************************************
  *
  *                          MENU

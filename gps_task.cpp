@@ -49,10 +49,10 @@ static void gps_task(void *parameters)
                 }
                 break;
             case LVGL_GPS_DATA_READY:
-                if (!gps->location.isValid()) {
-                    gps_data.event = LVGL_GPS_WAIT_FOR_DATA;
-                    break;
-                }
+                // if (!gps->location.isValid()) {
+                    // gps_data.event = LVGL_GPS_WAIT_FOR_DATA;
+                    // break;
+                // }
                 if (millis() - timestamp  >  UPDATE_TIME) {
                     timestamp = millis();
                     Serial.println("[GPS] update gps info ...");
@@ -76,10 +76,10 @@ static void gps_task(void *parameters)
                 break;
             }
             while (gpsSerial.available()) {
-                // Serial.write(gpsSerial.read());
                 gps->encode(gpsSerial.read());
+                // Serial.write(gpsSerial.read());
             }
-            Serial.println();
+            // Serial.println();
             delay(200);
         }
     }
