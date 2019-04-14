@@ -45,3 +45,5 @@ TTGO T-Watch
 
 <!-- 652383b694398d5379d4e3870e2f9d927f6a8bdc -->
 <!--  TFT-eSPI -->
+使用版本
+<!-- git reset --hard 3faaa32  -->

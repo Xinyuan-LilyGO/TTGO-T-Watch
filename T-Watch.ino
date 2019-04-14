@@ -319,6 +319,19 @@ void setup()
 
 // #define S7XG_DEBUG
 
+#if 0
+    Wire1.begin(SEN_SDA, SEN_SCL);
+    axp.begin(Wire1);
+    axp.setPowerOutPut(AXP202_LDO2, AXP202_ON);
+
+    backlight_init();
+    backlight_adjust(255);
+
+    SPI.begin(TFT_SCLK, TFT_MISO, TFT_MOSI, -1);
+    display_init();
+
+#endif
+
 #if defined(S7XG_DEBUG)
     Serial1.begin(115200, SERIAL_8N1, GPS_RX, GPS_TX );
     Wire1.begin(SEN_SDA, SEN_SCL);
@@ -474,76 +487,6 @@ void setup()
 
     xTaskCreate(time_task, "time", 2048, NULL, 20, NULL);
 
-
-
-#else
-    gps_task_init();
-
-    // lv_filesystem_init();
-
-    g_event_queue_handle = xQueueCreate(TASK_QUEUE_MESSAGE_LEN, sizeof(task_event_data_t));
-
-    Wire1.begin(SEN_SDA, SEN_SCL);
-
-    axp.begin(Wire1);
-
-    axp.enableIRQ(AXP202_ALL_IRQ, AXP202_OFF);
-
-    axp.adc1Enable(0xFF, AXP202_OFF);
-
-    axp.adc2Enable(0xFF, AXP202_OFF);
-
-    axp.adc1Enable(AXP202_BATT_VOL_ADC1 | AXP202_BATT_CUR_ADC1 | AXP202_VBUS_VOL_ADC1 | AXP202_VBUS_CUR_ADC1, AXP202_ON);
-
-    axp.enableIRQ(AXP202_VBUS_REMOVED_IRQ | AXP202_VBUS_CONNECT_IRQ | AXP202_CHARGING_FINISHED_IRQ, AXP202_ON);
-
-    axp.clearIRQ();
-
-    display_init();
-
-    wifi_event_setup();
-
-    motion_task_init();
-
-    lv_main();
-
-    backlight_init();
-
-    axp.setPowerOutPut(AXP202_LDO2, AXP202_ON);
-
-    btn.setLongClickHandler([](Button2 & b) {
-        task_event_data_t event_data;
-        event_data.type = MESS_EVENT_POWER;
-        event_data.power.event = LVGL_POWER_ENTER_SLEEP;
-        xQueueSend(g_event_queue_handle, &event_data, portMAX_DELAY);
-    });
-
-    btnTicker.attach_ms(30, [] {
-        btn.loop();
-    });
-
-// #define WIFI_SSID   "Xiaomi"
-// #define WIFI_PASSWD "12345678"
-//     WiFi.begin(WIFI_SSID, WIFI_PASSWD);
-//     while (WiFi.status() != WL_CONNECTED) {
-//         delay(500);
-//         Serial.print(".");
-//     }
-//     Serial.println("");
-//     Serial.println("WiFi connected");
-
-    attachInterrupt(AXP202_INT, [] {
-        BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-        task_event_data_t event_data;
-        event_data.type = MESS_EVENT_POWER;
-        event_data.power.event = LVGL_POWER_IRQ;
-        xQueueSendFromISR(g_event_queue_handle, &event_data, &xHigherPriorityTaskWoken);
-        if (xHigherPriorityTaskWoken)
-        {
-            portYIELD_FROM_ISR ();
-        }
-    }, FALLING);
-#endif
 }
 
 
@@ -809,11 +752,6 @@ extern "C" const char *get_wifi_address()
 extern "C" const char *get_wifi_mac()
 {
     return WiFi.macAddress().c_str();
-}
-
-extern "C" void enableGPSPower(bool en)
-{
-    axp.setPowerOutPut(AXP202_LDO3, en);
 }
 
 extern "C" const char *get_s7xg_model()
