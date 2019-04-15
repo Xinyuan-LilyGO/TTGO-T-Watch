@@ -47,3 +47,6 @@ TTGO T-Watch
 <!--  TFT-eSPI -->
 使用版本
 <!-- git reset --hard 3faaa32  -->
+
+
+//SD CS 外接10K 上拉电阻

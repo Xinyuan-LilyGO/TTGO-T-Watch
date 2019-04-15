@@ -178,6 +178,12 @@ LV_IMG_DECLARE(img_lora);
 typedef lv_res_t (*lv_menu_action_t) (lv_obj_t *obj);
 typedef void (*lv_menu_destory_t) (void);
 
+
+typedef struct {
+    const char *name;
+    lv_menu_action_t callback;
+} lv_lora_struct_t;
+
 typedef struct {
     const char *name;
     lv_menu_action_t callback;
@@ -236,6 +242,7 @@ static lv_res_t lv_setting_backlight_action(lv_obj_t *obj, const char *txt);
 static lv_res_t lv_setting_th_action(lv_obj_t *obj);
 static lv_res_t lv_tileview_action(lv_obj_t *obj, lv_coord_t x, lv_coord_t y);
 static lv_res_t menubtn_action(lv_obj_t *btn);
+static void lv_setWinMenuHeader(const char *title, const void *img_src, lv_action_t action);
 
 static lv_res_t lv_file_setting(lv_obj_t *par);
 static lv_res_t lv_setting(lv_obj_t *par);
@@ -254,9 +261,14 @@ static void lv_power_setting_destroy(void);
 static void  lv_lora_setting_destroy(void);
 static void  lv_setting_destroy(void);
 
+static lv_res_t lora_Sender(lv_obj_t *obj);
+static lv_res_t lora_Receiver(lv_obj_t *obj);
+static lv_res_t lora_LoRaWaln(lv_obj_t *obj);
+static lv_res_t lora_HardwareInfo(lv_obj_t *obj);
 
 static void lv_menu_del();
 static const void *lv_get_batt_icon();
+static lv_res_t win_btn_click(lv_obj_t *btn);
 
 static void *motion_img_src[4] = {
     &img_direction_up,
@@ -284,12 +296,12 @@ static lv_wifi_struct_t wifi_data[] = {
 };
 
 static lv_menu_struct_t menu_data[]  = {
-    {.name = "GPS", .callback = lv_gps_setting, .destroy = lv_gps_setting_destroy, .src_img = &img_placeholder},
     {.name = "LoRa", .callback = lv_lora_setting, .destroy = lv_lora_setting_destroy, .src_img = &img_lora},
+    {.name = "GPS", .callback = lv_gps_setting, .destroy = lv_gps_setting_destroy, .src_img = &img_placeholder},
     {.name = "WiFi", .callback = lv_wifi_setting, .destroy = lv_wifi_setting_destroy, .src_img = &img_wifi},
     {.name = "Power", .callback = lv_power_setting, .destroy = lv_power_setting_destroy, .src_img = &img_power},
     {.name = "Setting", .callback = lv_setting, .destroy = lv_setting_destroy, .src_img = &img_setting},
-    {.name = "SD", .callback = lv_file_setting, .destroy = lv_file_setting_destroy, .src_img = &img_folder},
+    {.name = "SD Card", .callback = lv_file_setting, .destroy = lv_file_setting_destroy, .src_img = &img_folder},
     {.name = "Sensor", .callback = lv_motion_setting, .destroy = lv_motion_setting_destroy, .src_img = &img_directions},
 };
 
@@ -298,7 +310,29 @@ static lv_menu_struct_t menu_data[]  = {
  *                          LORA
  *
  * ******************************************************************/
-static lv_res_t lv_lora_setting(lv_obj_t *par)
+
+
+#define LV_LORA_TITLE_1 "Sender"
+#define LV_LORA_TITLE_2 "Receiver"
+#define LV_LORA_TITLE_3 "LoRaWaln"
+#define LV_LORA_TITLE_4 "Hardware"
+static const char *loraMap[] = {LV_LORA_TITLE_1, "\n",
+                                LV_LORA_TITLE_2, "\n",
+                                LV_LORA_TITLE_3, "\n",
+                                LV_LORA_TITLE_4,
+                                ""
+                               };
+
+
+lv_lora_struct_t lora_data [] = {
+    {"Sender", lora_Sender},
+    {"Receiver", lora_Receiver},
+    {"LoRaWaln", lora_LoRaWaln},
+    {"Hardware", lora_HardwareInfo}
+};
+
+
+static lv_res_t lora_HardwareInfo(lv_obj_t *obj)
 {
     static lv_wifi_struct_t lora_data[] = {
         {.name = "Model", .get_val = get_s7xg_model},
@@ -307,23 +341,88 @@ static lv_res_t lv_lora_setting(lv_obj_t *par)
     };
 
     lv_obj_t *label = NULL;
-    gContainer = lv_obj_create(par, NULL);
-    lv_obj_set_size(gContainer,  g_menu_view_width, g_menu_view_height);
-    lv_obj_set_style(gContainer, &lv_style_transp_fit);
+    gObjecter = lv_obj_create(g_menu_win, NULL);
+    lv_obj_set_size(gObjecter,  g_menu_view_width, g_menu_view_height);
+    lv_obj_set_style(gObjecter, &lv_style_transp_fit);
     for (int i = 0; i < sizeof(lora_data) / sizeof(lora_data[0]); ++i) {
 
-        lora_data[i].label = lv_label_create(gContainer, NULL);
+        lora_data[i].label = lv_label_create(gObjecter, NULL);
         snprintf(buff, sizeof(buff), "%s:%s", lora_data[i].name, lora_data[i].get_val());
         lv_label_set_text(lora_data[i].label, buff);
         if (!i)
-            lv_obj_align(lora_data[i].label, gContainer, LV_ALIGN_IN_TOP_MID, 0, 0);
+            lv_obj_align(lora_data[i].label, gObjecter, LV_ALIGN_IN_TOP_MID, 0, 0);
         else
             lv_obj_align(lora_data[i].label, lora_data[i - 1].label, LV_ALIGN_OUT_BOTTOM_MID, 0, 0);
     }
+    return LV_RES_OK;
+}
+
+static lv_res_t lora_Sender(lv_obj_t *obj)
+{
+
+    return LV_RES_OK;
+}
+
+static lv_res_t lora_Receiver(lv_obj_t *obj)
+{
+
+    return LV_RES_OK;
+}
+
+static lv_res_t lora_LoRaWaln(lv_obj_t *obj)
+{
+
+    return LV_RES_OK;
+}
+
+
+lv_res_t lv_lora_action (struct _lv_obj_t *obj)
+{
+    printf("lv_lora_action\n");
+    if (gObjecter)
+        lv_obj_del(gObjecter);
+    gObjecter = NULL;
+    lv_obj_set_hidden(gContainer, false);
+    lv_setWinMenuHeader(NULL, SYMBOL_HOME, win_btn_click);
+}
+
+/*Called when a button is released ot long pressed*/
+static lv_res_t lora_btnm_action(lv_obj_t *btnm, const char *txt)
+{
+    for (int i = 0; i < sizeof(lora_data) / sizeof(lora_data[0]); ++i) {
+        if (strcmp(txt, lora_data[i].name)  == 0) {
+            lv_obj_set_hidden(gContainer, true);
+            lv_setWinMenuHeader(NULL, SYMBOL_LEFT, lv_lora_action);
+            // printf("[%d] %s\n", i, lora_data[i].name);
+            if (lora_data[i].callback) {
+                lora_data[i].callback(NULL);
+            }
+            break;
+        }
+    }
+    return LV_RES_OK; /*Return OK because the button matrix is not deleted*/
+}
+
+
+static lv_res_t lv_lora_setting(lv_obj_t *par)
+{
+    gContainer = lv_obj_create(par, NULL);
+    lv_obj_set_size(gContainer,  g_menu_view_width, g_menu_view_height);
+    lv_obj_set_style(gContainer, &lv_style_transp_fit);
+
+
+    /*Create a default button matrix*/
+    lv_obj_t *btnm1 = lv_btnm_create(gContainer, NULL);
+    lv_btnm_set_map(btnm1, loraMap);
+    lv_btnm_set_action(btnm1, lora_btnm_action);
+    lv_obj_set_size(btnm1, 180, LV_VER_RES / 2);
+    lv_obj_align(btnm1, NULL, LV_ALIGN_CENTER, 0, 0);
+    return LV_RES_OK;
 }
 
 static void  lv_lora_setting_destroy(void)
 {
+    printf("lv_lora_setting_destroy\n");
     lv_obj_del(gContainer);
     gContainer = NULL;
 }
@@ -333,6 +432,23 @@ static void  lv_lora_setting_destroy(void)
  *                          OHTER
  *
  * ******************************************************************/
+static void lv_setWinMenuHeader(const char *title, const void *img_src, lv_action_t action)
+{
+    // lv_obj_t *win_btn = lv_win_add_btn(g_menu_win, SYMBOL_HOME, win_btn_click);
+    // lv_win_set_btn_size(g_menu_win, 45);
+    lv_win_ext_t *ext = lv_obj_get_ext_attr(g_menu_win);
+    lv_obj_t *obj = NULL;
+    obj = lv_obj_get_child_back(ext->header, NULL);
+    if (!title)
+        lv_label_set_text(ext->title, title);
+    obj = lv_obj_get_child_back(ext->header, obj);
+    if (obj != NULL) {
+        lv_btn_set_action(obj, LV_BTN_ACTION_CLICK, action);
+        obj = lv_obj_get_child_back(obj, NULL);
+        lv_img_set_src(obj, img_src);
+    }
+}
+
 lv_res_t lv_timer_start(void (*timer_callback)(void *), uint32_t period, void *param)
 {
     lv_task_t *handle =  lv_task_create(timer_callback, period, LV_TASK_PRIO_LOW, param);
@@ -617,10 +733,16 @@ static void lv_motion_setting_destroy(void)
  *                          GPS
  *
  * ******************************************************************/
+// #define ESP32
+static char buffer[1024];
+lv_obj_t *gps_txt;
+
+
 uint8_t lv_gps_static_text_update(void *data)
 {
 #ifdef ESP32
     gps_struct_t *gps = (gps_struct_t *)data;
+#ifdef GPS_REDARW
 
     snprintf(buff, sizeof(buff), "%.2f", gps->lat);
     lv_label_set_text(gps_data[0].label, buff);
@@ -649,13 +771,40 @@ uint8_t lv_gps_static_text_update(void *data)
 
     snprintf(buff, sizeof(buff), "%.2f", gps->speed);
     lv_label_set_text(gps_data[6].label, buff);
+#else
+    /*
+        {.name = "lat:"},
+        {.name = "lng:"},
+        {.name = "satellites:"},
+        {.name = "date:"},
+        {.name = "altitude:"},  //meters
+        {.name = "course:"},
+        {.name = "speed:"}      //kmph
+    */
+    snprintf(buffer, sizeof(buffer), "lat:%.2f\nlng:%.2f\nsatellites:%u\ndate:%u-%u-%u\ntime:%u:%u:%u\naltitude:%.2f/m\nspeed:%.2f/kmph\n",
+             gps->lat,
+             gps->lng,
+             gps->satellites,
+             gps->date.year,
+             gps->date.month,
+             gps->date.day,
+             gps->date.hour,
+             gps->date.min,
+             gps->date.sec,
+             gps->altitude,
+             gps->speed
+            );
+
+    lv_label_set_text(gps_txt, buffer);
+
+#endif
 #endif
 }
 
 
-
 static lv_res_t lv_gps_static_text(lv_obj_t *par)
 {
+#ifdef GPS_REDARW
     lv_obj_t *label;
     lv_point_t size;
     lv_coord_t x = lv_obj_get_width(par) / 2 - 30;
@@ -679,6 +828,32 @@ static lv_res_t lv_gps_static_text(lv_obj_t *par)
         lv_obj_align(gps_data[i].label, NULL, LV_ALIGN_IN_TOP_LEFT, lv_obj_get_width(cont) / 2, u_offset * setup);
         ++setup;
     }
+#else
+    gContainer = lv_obj_create(g_menu_win, NULL);
+    lv_obj_set_size(gContainer,  g_menu_view_width, g_menu_view_height);
+    lv_obj_set_style(gContainer, &lv_style_transp_fit);
+
+    /*Create anew style*/
+    static lv_style_t style_txt;
+    lv_style_copy(&style_txt, &lv_style_plain);
+    style_txt.text.font = &lv_font_dejavu_20;
+    style_txt.text.letter_space = 2;
+    style_txt.text.line_space = 1;
+    style_txt.text.color = LV_COLOR_WHITE;//LV_COLOR_HEX(0x606060);
+
+    /*Create a new label*/
+    gps_txt = lv_label_create(gContainer, NULL);
+    lv_obj_set_style(gps_txt, &style_txt);                    /*Set the created style*/
+    lv_label_set_long_mode(gps_txt, LV_LABEL_LONG_BREAK);     /*Break the long lines*/
+    lv_label_set_recolor(gps_txt, true);                      /*Enable re-coloring by commands in the text*/
+    lv_label_set_align(gps_txt, LV_LABEL_ALIGN_CENTER);       /*Center aligned lines*/
+    lv_label_set_text(gps_txt, "Align lines to the middle\n\n"
+                      "#000080 Re-color# #0000ff words of# #6666ff the text#\n\n"
+                      "If a line become too long it can be automatically broken into multiple lines");
+    lv_obj_set_width(gps_txt, 240);                           /*Set a width*/
+    lv_obj_align(gps_txt, NULL, LV_ALIGN_CENTER, 0, -20);      /*Align to center*/
+
+#endif
     return LV_RES_OK;
 }
 
@@ -697,6 +872,11 @@ void gps_create_static_text()
 
 static lv_res_t lv_gps_anim_start(lv_obj_t *par)
 {
+    // lv_gps_static_text(g_menu_win);
+    // return 0;
+    ////////////////////////////////////////////////////*-------------------
+
+
     gps_anim_cont = lv_obj_create(par, NULL);
     lv_obj_set_size(gps_anim_cont, g_menu_view_width, g_menu_view_height);
     lv_obj_set_style(gps_anim_cont, &lv_style_transp_fit);
@@ -723,6 +903,8 @@ static lv_res_t lv_gps_anim_start(lv_obj_t *par)
 
 static void lv_gps_setting_destroy(void)
 {
+    lv_obj_del(gContainer);
+    gContainer = NULL;
 #ifdef ESP32
     task_event_data_t event_data;
     event_data.type = MESS_EVENT_GPS;
@@ -1166,15 +1348,16 @@ void create_menu(lv_obj_t *par)
     lv_obj_set_protect(wp, LV_PROTECT_POS);
 
     g_menu_win = lv_win_create(menu_cont, NULL);
-    lv_win_set_title(g_menu_win, "Menu");
+    lv_win_set_title(g_menu_win, menu_data[0].name);
     lv_win_set_sb_mode(g_menu_win, LV_SB_MODE_OFF);
     lv_win_set_layout(g_menu_win, LV_LAYOUT_PRETTY);
 
     static lv_win_ext_t *ext1 ;
     ext1 = lv_obj_get_ext_attr(g_menu_win);
     lv_coord_t height =  lv_obj_get_height(ext1->header);
-    lv_obj_t *win_btn = lv_win_add_btn(g_menu_win, SYMBOL_LEFT, win_btn_click);
+    lv_obj_t *win_btn = lv_win_add_btn(g_menu_win, SYMBOL_HOME, win_btn_click);
     lv_win_set_btn_size(g_menu_win, 45);
+    printf("SRC : %p\n", win_btn);  //0x98be28
 
     lv_win_set_style(g_menu_win, LV_WIN_STYLE_HEADER, &style_txt);
     lv_win_set_style(g_menu_win, LV_WIN_STYLE_BG, &style_txt);
@@ -1211,9 +1394,9 @@ void create_menu(lv_obj_t *par)
         lv_img_set_src(img, menu_data[i].src_img);
         lv_obj_align(img, NULL, LV_ALIGN_CENTER, 0, -20);
 
-        label = lv_label_create(cur_obj, NULL);
-        lv_label_set_text(label, menu_data[i].name);
-        lv_obj_align(label, img, LV_ALIGN_OUT_BOTTOM_MID, 0, 10);
+        // label = lv_label_create(cur_obj, NULL);
+        // lv_label_set_text(label, menu_data[i].name);
+        // lv_obj_align(label, img, LV_ALIGN_OUT_BOTTOM_MID, 0, 10);
         if (prev_obj != cur_obj) {
             prev_obj = cur_obj;
         }
@@ -1372,6 +1555,7 @@ static lv_res_t lv_tileview_action(lv_obj_t *obj, lv_coord_t x, lv_coord_t y)
         menu_data[x].callback(g_menu_win);
         curr_index = x;
     } else {
+        lv_win_set_title(g_menu_win, menu_data[x].name);
         prev = x;
     }
     return LV_RES_OK;

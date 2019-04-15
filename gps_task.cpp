@@ -11,6 +11,9 @@
 #include "struct_def.h"
 #include "lv_swatch.h"
 
+#define M8N_MOUDLE
+
+
 #ifdef  M8N_MOUDLE
 #define GPS_BANUD_RATE  9600
 #else

@@ -31,15 +31,17 @@
  **********************/
 AXP20X_Class axp;
 PCF8563_Class rtc;
+EventGroupHandle_t g_sync_event_group = NULL;
 QueueHandle_t g_event_queue_handle = NULL;
 static Ticker *wifiTicker = nullptr;
-Ticker btnTicker;
+static Ticker btnTicker;
 Button2 btn(USER_BUTTON);
 Ticker pwmTicker;
 power_data_t data;
 
-
 static void time_task(void *param);
+
+
 
 void wifi_event_setup()
 {
@@ -383,6 +385,7 @@ void setup()
         delay(1000);
     }
 #endif
+    g_sync_event_group = xEventGroupCreate();
 
     g_event_queue_handle = xQueueCreate(TASK_QUEUE_MESSAGE_LEN, sizeof(task_event_data_t));
 
@@ -644,7 +647,7 @@ void loop()
                 power_handle(&event_data.power);
                 break;
             case MESS_EVENT_LORA:
-
+                // lora_handle(&event_data.lora)
                 break;
             default:
                 Serial.println("Error event");

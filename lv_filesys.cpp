@@ -27,15 +27,15 @@ static lv_fs_res_t pcfs_tell(void *file_p, uint32_t *pos_p);
 
 extern xQueueHandle g_event_queue_handle;
 
-SPIClass SDSPI(VSPI);
+SPIClass SDSPI(HSPI);
 
 
 bool isSDVaild()
 {
-    if (digitalRead(SD_DETECT)) {
-        Serial.println("No Detect SD Card");
-        return false;
-    }
+    // if (digitalRead(SD_DETECT)) {
+    //     Serial.println("No Detect SD Card");
+    //     return false;
+    // }
     return true;
 }
 
@@ -48,7 +48,7 @@ bool sd_init()
     //     return false;
     // }
     SDSPI.begin(SD_SCLK, SD_MISO, SD_MOSI, SD_CS);
-    if (!f_dev.begin(SD_CS,SDSPI)) {
+    if (!f_dev.begin(SD_CS, SDSPI)) {
         Serial.println("Card Mount Failed");
         return false;
     }
@@ -78,27 +78,38 @@ bool sd_init()
 
 static void listDir(fs::FS &fs, const char *dirname, uint8_t levels)
 {
+    uint8_t cnt = 0;
     File root = fs.open(dirname);
     if (!root) {
-        Serial.println("failed to open directory");
-        lv_file_list_add(NULL, 0); //failed to open directory
+        Serial.println("- failed to open directory");
+        lv_file_list_add(NULL, 0);
         return;
     }
     if (!root.isDirectory()) {
-        Serial.println("not a directory");
-        lv_file_list_add(NULL, 0); // not a directory
+        Serial.println(" - not a directory");
+        lv_file_list_add(NULL, 0);
         return;
     }
+
     File file = root.openNextFile();
     while (file) {
         if (file.isDirectory()) {
-            lv_file_list_add(file.name(), DIR_TYPE);
+            // Serial.print("  DIR : ");
+            // Serial.println(file.name());
+            lv_file_list_add(file.name(), 1);
+
             if (levels) {
                 listDir(fs, file.name(), levels - 1);
             }
         } else {
-            Serial.println(file.name());
-            lv_file_list_add(file.name(), FILE_TYPE);
+            lv_file_list_add(file.name(), 0);
+            if (++cnt > 50) {
+                return;
+            }
+            // Serial.print("  FILE: ");
+            // Serial.print(file.name());
+            // Serial.print("  SIZE: ");
+            // Serial.println(file.size());
         }
         file = root.openNextFile();
     }
@@ -110,7 +121,7 @@ void file_handle(void *f)
     switch (file->event) {
     case LVGL_FILE_SCAN:
         Serial.println("LVGL_FILE_SCAN");
-        listDir(f_dev, "/", 1);
+        listDir(f_dev, "/", 2);
         break;
     default:
         break;
