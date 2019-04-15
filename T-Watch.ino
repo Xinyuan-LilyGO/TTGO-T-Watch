@@ -647,6 +647,7 @@ void loop()
                 power_handle(&event_data.power);
                 break;
             case MESS_EVENT_LORA:
+                Serial.println("MESS_EVENT_LORA event");
                 // lora_handle(&event_data.lora)
                 break;
             default:

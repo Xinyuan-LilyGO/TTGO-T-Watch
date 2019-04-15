@@ -136,6 +136,19 @@ typedef struct {
     struct tm time;
 } time_struct_t;
 
+
+typedef enum {
+    LVGL_LORA_SEND,
+    LVGL_LORA_RECV,
+    LVGL_LORAWLAN,
+    LVGL_LORA_STOP
+} lora_event_t;
+
+typedef struct {
+    lora_event_t event;
+    void *data;
+}lora_struct_t;
+
 typedef struct {
     union {
         gps_struct_t gps;
@@ -144,6 +157,7 @@ typedef struct {
         time_struct_t time;
         file_struct_t file;
         power_struct_t power;
+        lora_struct_t lora;
     };
     void *arg;
     message_type_t type;

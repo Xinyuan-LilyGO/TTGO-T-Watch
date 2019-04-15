@@ -50,3 +50,4 @@ TTGO T-Watch
 
 
 //SD CS 外接10K 上拉电阻
+//SD Detect 不接，预留spi miso使用

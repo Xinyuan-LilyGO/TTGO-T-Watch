@@ -357,21 +357,77 @@ static lv_res_t lora_HardwareInfo(lv_obj_t *obj)
     return LV_RES_OK;
 }
 
+lv_obj_t *ta1 = NULL;
+
+void timer1_callback(void *a)
+{
+    static int i = 0;
+    char bf[128];
+    snprintf(bf, sizeof(bf), "lora send %d\n", ++i);
+    if (lv_txt_get_encoded_length(lv_ta_get_text(ta1)) >= lv_ta_get_max_length(ta1)) {
+        lv_ta_set_text(ta1, "");    /*Set an initial text*/
+    }
+    lv_ta_add_text(ta1, bf);
+}
+
+void lora_add_message(const char *txt)
+{
+    if (!txt || !ta1)return;
+    if (lv_txt_get_encoded_length(lv_ta_get_text(ta1)) >= lv_ta_get_max_length(ta1)) {
+        lv_ta_set_text(ta1, "");
+    }
+    lv_ta_add_text(ta1, txt);
+}
+
+
+static void lora_create_windows()
+{
+    static lv_style_t style_sb;
+    lv_style_copy(&style_sb, &lv_style_transp_fit);
+
+    gObjecter = lv_obj_create(g_menu_win, NULL);
+    lv_obj_set_size(gObjecter,  g_menu_view_width, g_menu_view_height);
+    lv_obj_set_style(gObjecter, &lv_style_transp_fit);
+
+    /*Create a normal Text area*/
+    ta1 = lv_ta_create(gObjecter, NULL);
+    lv_obj_set_size(ta1, g_menu_view_width, g_menu_view_height);
+    lv_obj_align(ta1, NULL, LV_ALIGN_CENTER, 0, 0);
+    lv_ta_set_style(ta1, LV_TA_STYLE_BG, &style_sb);                    /*Apply the scroll bar style*/
+    lv_ta_set_cursor_type(ta1, LV_CURSOR_NONE);
+    lv_ta_set_text(ta1, "");    /*Set an initial text*/
+    lv_ta_set_max_length(ta1, 255);
+}
+
 static lv_res_t lora_Sender(lv_obj_t *obj)
 {
-
+    lora_create_windows();
+    // lv_task_t *handle =  lv_task_create(timer1_callback, 500, LV_TASK_PRIO_LOW, NULL);
+#ifdef ESP32
+    task_event_data_t event_data;
+    event_data.type = MESS_EVENT_LORA;
+    event_data.lora.event = LVGL_LORA_SEND;
+    xQueueSend(g_event_queue_handle, &event_data, portMAX_DELAY);
+#endif
     return LV_RES_OK;
 }
 
 static lv_res_t lora_Receiver(lv_obj_t *obj)
 {
+    lora_create_windows();
+#ifdef ESP32
+    task_event_data_t event_data;
+    event_data.type = MESS_EVENT_LORA;
+    event_data.lora.event = LVGL_LORA_RECV;
+    xQueueSend(g_event_queue_handle, &event_data, portMAX_DELAY);
+#endif
 
     return LV_RES_OK;
 }
 
 static lv_res_t lora_LoRaWaln(lv_obj_t *obj)
 {
-
+    lora_create_windows();
     return LV_RES_OK;
 }
 
@@ -379,9 +435,17 @@ static lv_res_t lora_LoRaWaln(lv_obj_t *obj)
 lv_res_t lv_lora_action (struct _lv_obj_t *obj)
 {
     printf("lv_lora_action\n");
+#ifdef ESP32
+    task_event_data_t event_data;
+    event_data.type = MESS_EVENT_LORA;
+    event_data.lora.event = LVGL_LORA_STOP;
+    xQueueSend(g_event_queue_handle, &event_data, portMAX_DELAY);
+#endif
+
     if (gObjecter)
         lv_obj_del(gObjecter);
     gObjecter = NULL;
+    ta1 = NULL;
     lv_obj_set_hidden(gContainer, false);
     lv_setWinMenuHeader(NULL, SYMBOL_HOME, win_btn_click);
 }
@@ -410,13 +474,12 @@ static lv_res_t lv_lora_setting(lv_obj_t *par)
     lv_obj_set_size(gContainer,  g_menu_view_width, g_menu_view_height);
     lv_obj_set_style(gContainer, &lv_style_transp_fit);
 
-
     /*Create a default button matrix*/
     lv_obj_t *btnm1 = lv_btnm_create(gContainer, NULL);
     lv_btnm_set_map(btnm1, loraMap);
     lv_btnm_set_action(btnm1, lora_btnm_action);
     lv_obj_set_size(btnm1, 180, LV_VER_RES / 2);
-    lv_obj_align(btnm1, NULL, LV_ALIGN_CENTER, 0, 0);
+    lv_obj_align(btnm1, NULL, LV_ALIGN_CENTER, 0, -20);
     return LV_RES_OK;
 }
 
