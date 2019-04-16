@@ -50,7 +50,7 @@ void lv_update_power_info(power_data_t *data);
 void charging_anim_start();
 void charging_anim_stop();
 void lv_create_ttgo();
-
+void lora_add_message(const char *txt);
 
 /**********************
  *      MACROS

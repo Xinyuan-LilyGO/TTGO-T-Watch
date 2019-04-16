@@ -51,3 +51,5 @@ TTGO T-Watch
 
 //SD CS 外接10K 上拉电阻
 //SD Detect 不接，预留spi miso使用
+
+rtc_clk_cpu_freq_set(RTC_CPU_FREQ_80M);

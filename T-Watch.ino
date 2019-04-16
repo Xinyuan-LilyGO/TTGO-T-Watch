@@ -17,6 +17,8 @@
 #include <Button2.h>
 #include <SPI.h>
 #include <pcf8563.h>
+#include <soc/rtc.h>
+// #include <s7xg.h>
 
 /*********************
  *      DEFINES
@@ -29,6 +31,7 @@
  *
  *  STATIC VARIABLES
  **********************/
+// S7XG_Class s7xg;
 AXP20X_Class axp;
 PCF8563_Class rtc;
 EventGroupHandle_t g_sync_event_group = NULL;
@@ -299,10 +302,73 @@ void lora_test()
 void setup()
 {
     Serial.begin(115200);
+#if 0
+    Serial1.begin(115200, SERIAL_8N1, GPS_RX, GPS_TX );
+    Wire1.begin(SEN_SDA, SEN_SCL);
+    axp.begin(Wire1);
+    axp.setLDO4Voltage(AXP202_LDO4_1800MV);
+    axp.setPowerOutPut(AXP202_LDO4, AXP202_ON);
+    s7xg.begin(Serial1);
+    s7xg.reset();
+    delay(1000);
+    s7xg.loraSetPingPongReceiver();
+    for (;;) {
+        Serial.println(s7xg.loraGetPingPongMessage());
+        delay(1000);
+    }
+#endif
+#if 0
+    Serial1.begin(115200, SERIAL_8N1, GPS_RX, GPS_TX );
+    Wire1.begin(SEN_SDA, SEN_SCL);
+    axp.begin(Wire1);
+    axp.setLDO4Voltage(AXP202_LDO4_1800MV);
+    axp.setPowerOutPut(AXP202_LDO4, AXP202_ON);
 
+    s7xg.begin(Serial1);
+    s7xg.reset();
+    delay(1000);
+    s7xg.gpsReset();
+    s7xg.gpsSetLevelShift(true);
+    s7xg.gpsSetStart();
+    s7xg.gpsSetSystem(0);
+    s7xg.gpsSetPositioningCycle(1000);
+    s7xg.gpsSetPortUplink(20);
+    s7xg.gpsSetFormatUplink(1);
+    s7xg.gpsSetMode(1);
+    Serial.println(s7xg.getHardWareModel());
+    Serial.println(s7xg.getVersion());
+
+    // startGPS();
+    // lora_test();
+    // lora_PingPong();
+
+    for (;;) {
+        GPS_Class gps =  s7xg.gpsGetData(GPS_DATA_TYPE_DD);
+        if (gps.isVaild()) {
+            Serial.printf("%d-%d-%d --- %d:%d:%d -- %.2f - %.2f\n",
+                          gps.year(), gps.month(), gps.day(),
+                          gps.hour(), gps.minute(), gps.second(), gps.lat(), gps.lng()
+                         );
+        }
+        delay(100);
+    }
+
+    for (;;) {
+        if (Serial1.available()) {
+            String r = Serial1.readString();
+            Serial.println(r);
+        }
+        if (Serial.available()) {
+            String r = Serial.readString();
+            Serial1.write(r.c_str());
+        }
+    }
+
+#endif
 // #define S7XG_DEBUG
 
 #if 0
+    //tft test
     Wire1.begin(SEN_SDA, SEN_SCL);
     axp.begin(Wire1);
     axp.setPowerOutPut(AXP202_LDO2, AXP202_ON);
@@ -391,7 +457,7 @@ void setup()
 
     SPI.begin(TFT_SCLK, TFT_MISO, TFT_MOSI, -1);
 
-    lv_filesystem_init();
+    // lv_filesystem_init();
 
     display_init();
 
@@ -524,8 +590,6 @@ void wifi_handle(void *data)
     }
 }
 
-
-
 void power_handle(void *param)
 {
     power_struct_t *p = (power_struct_t *)param;
@@ -562,13 +626,23 @@ void power_handle(void *param)
         if (axp.isPEKShortPressIRQ()) {
             if (isBacklightOn()) {
                 backlight_off();
+                display_sleep();
+                //TODO 
+                //.. TP SLEEP
+                //.. TFT SLEEP
+                axp.setPowerOutPut(AXP202_LDO2, AXP202_OFF);
+                rtc_clk_cpu_freq_set(RTC_CPU_FREQ_80M);
             } else {
+                rtc_clk_cpu_freq_set(RTC_CPU_FREQ_240M);
+                axp.setPowerOutPut(AXP202_LDO2, AXP202_ON);
                 backlight_on();
-                touch_timer_create();
+                display_on();
+                touch_timer_create();  
             }
         }
         axp.clearIRQ();
         break;
+
     case LVGL_POWER_ENTER_SLEEP: {
         lv_create_ttgo();
         int level = backlight_getLevel();
@@ -615,6 +689,10 @@ void time_handle(void *param)
     }
 }
 
+
+
+
+
 void loop()
 {
     task_event_data_t event_data;
@@ -622,7 +700,13 @@ void loop()
         if (xQueueReceive(g_event_queue_handle, &event_data, portMAX_DELAY) == pdPASS) {
             switch (event_data.type) {
             case MESS_EVENT_GPS:
+#if defined(UBOX_M8N_GPS)
                 gps_handle(&event_data.gps);
+#elif defined(ACSIP_S7XG)
+                Serial.println("MESS_EVENT_GPS event");
+                event_data.lora.event = (lora_event_t)event_data.gps.event;
+                s7xg_handle(&event_data.lora);
+#endif
                 break;
             case MESS_EVENT_FILE:
                 file_handle(&event_data.file);
@@ -647,8 +731,10 @@ void loop()
                 power_handle(&event_data.power);
                 break;
             case MESS_EVENT_LORA:
+#if defined(ACSIP_S7XG)
                 Serial.println("MESS_EVENT_LORA event");
-                // lora_handle(&event_data.lora)
+                s7xg_handle(&event_data.lora);
+#endif
                 break;
             default:
                 Serial.println("Error event");
@@ -726,18 +812,7 @@ extern "C" const char *get_wifi_mac()
     return WiFi.macAddress().c_str();
 }
 
-extern "C" const char *get_s7xg_model()
-{
-    return "s78G";
-}
-extern "C" const char *get_s7xg_ver()
-{
-    return "V1.08";
-}
-extern "C" const char *get_s7xg_join()
-{
-    return "unjoined";
-}
+
 
 void gps_power_on()
 {
@@ -750,3 +825,13 @@ void gps_power_off()
     axp.setPowerOutPut(AXP202_LDO3, AXP202_OFF);
 }
 
+void s7xg_power_on()
+{
+    axp.setLDO4Voltage(AXP202_LDO4_1800MV);
+    axp.setPowerOutPut(AXP202_LDO4, AXP202_ON);
+}
+
+void s7xg_power_off()
+{
+    axp.setPowerOutPut(AXP202_LDO4, AXP202_OFF);
+}

@@ -5,6 +5,8 @@
 #include <Arduino.h>
 #include <time.h>
 
+#define ACSIP_S7XG
+
 typedef enum {
     DIRECTION_TOP_EDGE        = 0,    /* Top edge of the board points towards the ceiling */
     DIRECTION_BOTTOM_EDGE     = 1,    /* Bottom edge of the board points towards the ceiling */
@@ -138,16 +140,20 @@ typedef struct {
 
 
 typedef enum {
-    LVGL_LORA_SEND,
-    LVGL_LORA_RECV,
-    LVGL_LORAWLAN,
-    LVGL_LORA_STOP
+    LVGL_S7XG_GPS_START,
+    LVGL_S7XG_GPS_STOP,
+    LVGL_S7XG_GPS_DATA_READY,
+    LVGL_S7XG_GPS_WAIT_FOR_DATA,
+    LVGL_S7XG_LORA_SEND,
+    LVGL_S7XG_LORA_RECV,
+    LVGL_S7XG_LORAWLAN,
+    LVGL_S7XG_LORA_STOP,
 } lora_event_t;
 
 typedef struct {
     lora_event_t event;
     void *data;
-}lora_struct_t;
+} lora_struct_t;
 
 typedef struct {
     union {

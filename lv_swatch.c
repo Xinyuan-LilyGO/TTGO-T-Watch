@@ -357,7 +357,7 @@ static lv_res_t lora_HardwareInfo(lv_obj_t *obj)
     return LV_RES_OK;
 }
 
-lv_obj_t *ta1 = NULL;
+static lv_obj_t *ta1 = NULL;
 
 void timer1_callback(void *a)
 {
@@ -406,7 +406,7 @@ static lv_res_t lora_Sender(lv_obj_t *obj)
 #ifdef ESP32
     task_event_data_t event_data;
     event_data.type = MESS_EVENT_LORA;
-    event_data.lora.event = LVGL_LORA_SEND;
+    event_data.lora.event = LVGL_S7XG_LORA_SEND;
     xQueueSend(g_event_queue_handle, &event_data, portMAX_DELAY);
 #endif
     return LV_RES_OK;
@@ -418,10 +418,9 @@ static lv_res_t lora_Receiver(lv_obj_t *obj)
 #ifdef ESP32
     task_event_data_t event_data;
     event_data.type = MESS_EVENT_LORA;
-    event_data.lora.event = LVGL_LORA_RECV;
+    event_data.lora.event = LVGL_S7XG_LORA_RECV;
     xQueueSend(g_event_queue_handle, &event_data, portMAX_DELAY);
 #endif
-
     return LV_RES_OK;
 }
 
@@ -431,14 +430,13 @@ static lv_res_t lora_LoRaWaln(lv_obj_t *obj)
     return LV_RES_OK;
 }
 
-
 lv_res_t lv_lora_action (struct _lv_obj_t *obj)
 {
     printf("lv_lora_action\n");
 #ifdef ESP32
     task_event_data_t event_data;
     event_data.type = MESS_EVENT_LORA;
-    event_data.lora.event = LVGL_LORA_STOP;
+    event_data.lora.event = LVGL_S7XG_LORA_STOP;
     xQueueSend(g_event_queue_handle, &event_data, portMAX_DELAY);
 #endif
 
@@ -844,6 +842,7 @@ uint8_t lv_gps_static_text_update(void *data)
         {.name = "course:"},
         {.name = "speed:"}      //kmph
     */
+#if defined(UBOX_M8N_GPS)
     snprintf(buffer, sizeof(buffer), "lat:%.2f\nlng:%.2f\nsatellites:%u\ndate:%u-%u-%u\ntime:%u:%u:%u\naltitude:%.2f/m\nspeed:%.2f/kmph\n",
              gps->lat,
              gps->lng,
@@ -857,7 +856,18 @@ uint8_t lv_gps_static_text_update(void *data)
              gps->altitude,
              gps->speed
             );
-
+#elif defined(ACSIP_S7XG)
+    snprintf(buffer, sizeof(buffer), "lat:%.2f\nlng:%.2f\ndate:%u-%u-%u\ntime:%u:%u:%u\n",
+             gps->lat,
+             gps->lng,
+             gps->date.year,
+             gps->date.month,
+             gps->date.day,
+             gps->date.hour,
+             gps->date.min,
+             gps->date.sec
+            );
+#endif
     lv_label_set_text(gps_txt, buffer);
 
 #endif
@@ -892,9 +902,9 @@ static lv_res_t lv_gps_static_text(lv_obj_t *par)
         ++setup;
     }
 #else
-    gContainer = lv_obj_create(g_menu_win, NULL);
-    lv_obj_set_size(gContainer,  g_menu_view_width, g_menu_view_height);
-    lv_obj_set_style(gContainer, &lv_style_transp_fit);
+    // gContainer = lv_obj_create(g_menu_win, NULL);
+    // lv_obj_set_size(gContainer,  g_menu_view_width, g_menu_view_height);
+    // lv_obj_set_style(gContainer, &lv_style_transp_fit);
 
     /*Create anew style*/
     static lv_style_t style_txt;
@@ -922,9 +932,8 @@ static lv_res_t lv_gps_static_text(lv_obj_t *par)
 
 void gps_anim_close()
 {
-    if (gps_anim_started) {
-        gps_anim_started = false;
-        lv_obj_del(gps_anim_cont);
+    if (gContainer) {
+        lv_obj_clean(gContainer);
     }
 }
 
@@ -939,12 +948,11 @@ static lv_res_t lv_gps_anim_start(lv_obj_t *par)
     // return 0;
     ////////////////////////////////////////////////////*-------------------
 
+    gContainer = lv_obj_create(par, NULL);
+    lv_obj_set_size(gContainer, g_menu_view_width, g_menu_view_height);
+    lv_obj_set_style(gContainer, &lv_style_transp_fit);
 
-    gps_anim_cont = lv_obj_create(par, NULL);
-    lv_obj_set_size(gps_anim_cont, g_menu_view_width, g_menu_view_height);
-    lv_obj_set_style(gps_anim_cont, &lv_style_transp_fit);
-
-    lv_obj_t *img = lv_img_create(gps_anim_cont, NULL);
+    lv_obj_t *img = lv_img_create(gContainer, NULL);
     lv_img_set_src(img, &image_location);
     lv_obj_align(img, NULL, LV_ALIGN_CENTER, 0, 0);
     static lv_anim_t a;

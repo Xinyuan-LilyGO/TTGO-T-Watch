@@ -14,6 +14,120 @@ static Ticker lvTicker2;
 static bool tpInit = false;
 
 static TimerHandle_t touch_handle = NULL;
+
+
+
+class FT5206_Class
+{
+#define FT5206_SLAVE_ADDRESS    (0x38)
+
+#define FT5206_MODE_REG         (0x00)
+#define FT5206_TOUCHES_REG      (0x02)
+#define FT5206_VENDID_REG       (0xA8)
+#define FT5206_CHIPID_REG       (0xA3)
+#define FT5206_THRESHHOLD_REG   (0x80)
+#define FT5206_POWER_REG        (0x87)
+
+#define FT5206_MONITOR         (0x01)
+#define FT5206_SLEEP_IN        (0x03)
+
+#define FT5206_VENDID           0x11
+#define FT6206_CHIPID           0x06
+#define FT6236_CHIPID           0x36
+#define FT6236U_CHIPID          0x64
+
+public:
+    FT5206_Class();
+
+    int begin(TwoWire &port = Wire, uint8_t addr = FT5206_SLAVE_ADDRESS)
+    {
+        uint8_t val;
+        _readByte(FT5206_VENDID_REG, 1, &val);
+        if (val != FT5206_VENDID) {
+            return false;
+        }
+        _readByte(FT5206_CHIPID_REG, 1, &val);
+        if ((val != FT6206_CHIPID) && (val != FT6236_CHIPID) && (val != FT6236U_CHIPID)) {
+            return false;
+        }
+    }
+
+    // valid touching detect threshold.
+    void adjustTheshold(uint8_t thresh)
+    {
+        _writeByte(FT5206_THRESHHOLD_REG, 1, &thresh);
+    }
+
+    bool getPoint()
+    {
+        _readByte(0x00, 16, _data);
+        // touches = _data[0x02];
+        // if ((touches > 2) || (touches == 0)) {
+        //     touches = 0;
+        // }
+        for (uint8_t i = 0; i < 2; i++) {
+            _x[i] = _data[0x03 + i * 6] & 0x0F;
+            _x[i] <<= 8;
+            _x[i] |= _data[0x04 + i * 6];
+            _y[i] = _data[0x05 + i * 6] & 0x0F;
+            _y[i] <<= 8;
+            _y[i] |= _data[0x06 + i * 6];
+            _id[i] = _data[0x05 + i * 6] >> 4;
+        }
+    }
+
+    uint8_t isTouched()
+    {
+        uint8_t val;
+        _readByte(FT5206_TOUCHES_REG, 1, &val);
+        return val;
+    }
+
+    void enterSleepMode()
+    {
+        uint8_t val = FT5206_SLEEP_IN;
+        _writeByte(FT5206_POWER_REG, 1, &val);
+    }
+
+    void enterMonitorMode()
+    {
+        uint8_t val = FT5206_MONITOR;
+        _writeByte(FT5206_POWER_REG, 1, &val);
+    }
+
+private:
+
+    int _readByte(uint8_t reg, uint8_t nbytes, uint8_t *data)
+    {
+        _i2cPort->beginTransmission(_address);
+        _i2cPort->write(reg);
+        _i2cPort->endTransmission();
+        _i2cPort->requestFrom(_address, nbytes);
+        uint8_t index = 0;
+        while (_i2cPort->available())
+            data[index++] = _i2cPort->read();
+    }
+
+    int _writeByte(uint8_t reg, uint8_t nbytes, uint8_t *data)
+    {
+        _i2cPort->beginTransmission(_address);
+        _i2cPort->write(reg);
+        for (uint8_t i = 0; i < nbytes; i++) {
+            _i2cPort->write(data[i]);
+        }
+        _i2cPort->endTransmission();
+    }
+
+    uint8_t _address;
+    uint8_t _data[16];
+    uint16_t _x[2];
+    uint16_t _y[2];
+    uint16_t _id[2];
+    bool _init = false;
+    TwoWire *_i2cPort;
+};
+
+
 void touch_timer_callback( TimerHandle_t xTimer )
 {
 #ifdef DEBUG_DEMO
@@ -82,6 +196,19 @@ void display_off()
     tp->sleepIn();
 }
 
+void display_sleep()
+{
+    tft->writecommand(TFT_DISPOFF);
+    tft->writecommand(TFT_SLPIN);
+    tp->enterMonitorMode();
+}
+
+void display_on()
+{
+    tft->writecommand(TFT_SLPOUT);
+    tft->writecommand(TFT_DISPON);
+}
+
 void display_init()
 {
     tft = new TFT_eSPI(LV_HOR_RES, LV_VER_RES);
@@ -139,107 +266,4 @@ void display_init()
 
     touch_timer_create();
 }
-
-class FT5206_Class
-{
-#define FT5206_SLAVE_ADDRESS    (0x38)
-
-#define FT5206_MODE_REG         (0x00)
-#define FT5206_TOUCHES_REG      (0x02)
-#define FT5206_VENDID_REG       (0xA8)
-#define FT5206_CHIPID_REG       (0xA3)
-#define FT5206_THRESHHOLD_REG   (0x80)
-#define FT5206_POWER_REG        (0x87)
-
-#define FT5206_SLEEP_IN        (0x03)
-
-#define FT5206_VENDID           0x11
-#define FT6206_CHIPID           0x06
-#define FT6236_CHIPID           0x36
-#define FT6236U_CHIPID          0x64
-
-public:
-    FT5206_Class();
-
-    int begin(TwoWire &port = Wire, uint8_t addr = FT5206_SLAVE_ADDRESS)
-    {
-        uint8_t val;
-        _readByte(FT5206_VENDID_REG, 1, &val);
-        if (val != FT5206_VENDID) {
-            return false;
-        }
-        _readByte(FT5206_CHIPID_REG, 1, &val);
-        if ((val != FT6206_CHIPID) && (val != FT6236_CHIPID) && (val != FT6236U_CHIPID)) {
-            return false;
-        }
-    }
-
-    // valid touching detect threshold.
-    void adjustTheshold(uint8_t thresh)
-    {
-        _writeByte(FT5206_THRESHHOLD_REG, 1, &thresh);
-    }
-
-    bool getPoint()
-    {
-        _readByte(0x00, 16, _data);
-        // touches = _data[0x02];
-        // if ((touches > 2) || (touches == 0)) {
-        //     touches = 0;
-        // }
-        for (uint8_t i = 0; i < 2; i++) {
-            _x[i] = _data[0x03 + i * 6] & 0x0F;
-            _x[i] <<= 8;
-            _x[i] |= _data[0x04 + i * 6];
-            _y[i] = _data[0x05 + i * 6] & 0x0F;
-            _y[i] <<= 8;
-            _y[i] |= _data[0x06 + i * 6];
-            _id[i] = _data[0x05 + i * 6] >> 4;
-        }
-    }
-
-    uint8_t isTouched()
-    {
-        uint8_t val;
-        _readByte(FT5206_TOUCHES_REG, 1, &val);
-        return val;
-    }
-
-    void sleep()
-    {
-        uint8_t val = FT5206_SLEEP_IN;
-        _writeByte(FT5206_POWER_REG, 1, &val);
-    }
-
-private:
-
-    int _readByte(uint8_t reg, uint8_t nbytes, uint8_t *data)
-    {
-        _i2cPort->beginTransmission(_address);
-        _i2cPort->write(reg);
-        _i2cPort->endTransmission();
-        _i2cPort->requestFrom(_address, nbytes);
-        uint8_t index = 0;
-        while (_i2cPort->available())
-            data[index++] = _i2cPort->read();
-    }
-
-    int _writeByte(uint8_t reg, uint8_t nbytes, uint8_t *data)
-    {
-        _i2cPort->beginTransmission(_address);
-        _i2cPort->write(reg);
-        for (uint8_t i = 0; i < nbytes; i++) {
-            _i2cPort->write(data[i]);
-        }
-        _i2cPort->endTransmission();
-    }
-
-    uint8_t _address;
-    uint8_t _data[16];
-    uint16_t _x[2];
-    uint16_t _y[2];
-    uint16_t _id[2];
-    bool _init = false;
-    TwoWire *_i2cPort;
-};
 

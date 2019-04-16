@@ -3,8 +3,8 @@
 #define __BOARD_DEF_H
 
 // #define __DEBUG
-// #define TTGO_TWATCH_V10
-#define TTGO_TWATCH_V12
+#define TTGO_TWATCH_V10
+// #define TTGO_TWATCH_V12
 
 // #include "gpio.h"
 #if defined(TTGO_TWATCH_V09)
