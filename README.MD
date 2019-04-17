@@ -28,7 +28,7 @@ TTGO T-Watch
 
 
 - [TFT_eSPI](https://github.com/Bodmer/TFT_eSPI)
-- [Adafruit_FT6206_Library](https://github.com/adafruit/Adafruit_FT6206_Library)
+- [FT5206_Library](https://github.com/lewisxhe/FT5206_Library)
 - [TinyGPSPlus](https://github.com/mikalhart/TinyGPSPlus)
 - [Lvgl](https://github.com/littlevgl/lv_arduino.git)
 - [AXP20X_Library](https://github.com/lewisxhe/AXP20X_Library)
@@ -39,6 +39,16 @@ TTGO T-Watch
 
 - config `lv_conf.h`
 - TFT-eSPI
+
+git init 
+git submodule add https://github.com/littlevgl/lvgl.git src
+cd src
+git reset --hard 9d0f688
+cd ..
+git add .
+git commit -m "Change to T-Watch to use the repository"
+git push origin master
+
 
 <!-- 9d0f68880adbaf80742182c551cab1a2d4bea7de -->
 <!-- lvgl -->

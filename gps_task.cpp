@@ -43,11 +43,12 @@ S7XG_Class s7xg;
 
 #define UPDATE_TIME 1000
 
+static uint32_t sec = 0;
+
 #if defined(UBOX_M8N_GPS)
 static void gps_task(void *parameters)
 {
     uint32_t timestamp = 0;
-
     uint32_t teststamp = 0;
     while (1) {
         if (xEventGroupWaitBits(gpsEventGroup, BIT0, pdFALSE, pdTRUE, portMAX_DELAY) == BIT0) {
@@ -55,7 +56,7 @@ static void gps_task(void *parameters)
             case LVGL_GPS_WAIT_FOR_DATA:
                 if (millis() - teststamp  >  UPDATE_TIME) {
                     teststamp = millis();
-                    Serial.println("[GPS] Get GPS Data ..");
+                    Serial.printf("[GPS] Get GPS Data ( %lu )\n", ++sec);
                 }
                 if (gps->location.isValid()) {
                     gps_data.event = LVGL_GPS_DATA_READY;
@@ -126,6 +127,7 @@ void gps_handle(void *data)
         gps_power_off();
         //Shutdown gps power
         gps_data.event = LVGL_GPS_STOP;
+        sec = 0;
         break;
     case LVGL_GPS_DATA_READY:
         break;
@@ -239,22 +241,36 @@ static void s7xg_task(void *parameters)
     }
 }
 
-extern "C" const char *get_s7xg_model()
-{
-    String model = s7xg.getHardWareModel();
-    return model == "" ? "N/A" : model.c_str();
-}
-extern "C" const char *get_s7xg_ver()
-{
-    String ver = s7xg.getVersion();
-    return  ver == "" ? "N/A" : ver.c_str();
-}
-extern "C" const char *get_s7xg_join()
-{
-    return "unjoined";
-}
 
 #endif
+
+extern "C" const char *get_s7xg_model()
+{
+#if defined(ACSIP_S7XG)
+    String model = s7xg.getHardWareModel();
+    return model == "" ? "N/A" : model.c_str();
+#else
+    return "N/A";
+#endif
+}
+
+extern "C" const char *get_s7xg_ver()
+{
+#if defined(ACSIP_S7XG)
+    String ver = s7xg.getVersion();
+    return  ver == "" ? "N/A" : ver.c_str();
+#else
+    return "N/A";
+#endif
+}
+
+extern "C" const char *get_s7xg_join()
+{
+#if defined(ACSIP_S7XG)
+#else
+#endif
+    return "unjoined";
+}
 
 void gps_task_init()
 {

@@ -301,22 +301,10 @@ void lora_test()
 
 
 
-// FT5206_Class ft;
-// Adafruit_FT6206 ft6206;
+
 void setup()
 {
     Serial.begin(115200);
-
-    // Wire.begin(I2C_SDA, I2C_SCL);
-    // // // ft6206.begin();
-    // ft.begin(Wire);
-    // for (;;) {
-    //     TP_Point tp = ft.getPoint(0);
-    //     // TS_Point tp = ft6206.getPoint();
-
-    //     Serial.printf("x:%d y:%d\n", tp.x, tp.y);
-    //     delay(500);
-    // }
 
 #if 0
     Serial1.begin(115200, SERIAL_8N1, GPS_RX, GPS_TX );
@@ -635,6 +623,7 @@ void power_handle(void *param)
         }
         if (axp.isPEKShortPressIRQ()) {
             if (isBacklightOn()) {
+                lv_task_enable(false);
                 backlight_off();
                 display_sleep();
                 //TODO
@@ -646,8 +635,9 @@ void power_handle(void *param)
             } else {
                 rtc_clk_cpu_freq_set(RTC_CPU_FREQ_240M);
                 axp.setPowerOutPut(AXP202_LDO2, AXP202_ON);
+                lv_task_enable(true);
                 backlight_on();
-                display_on();
+                display_wakeup();
                 touch_timer_create();
             }
         }

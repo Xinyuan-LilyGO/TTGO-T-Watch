@@ -93,7 +93,7 @@ void display_sleep()
     tp->enterMonitorMode();
 }
 
-void display_on()
+void display_wakeup()
 {
     tft->writecommand(TFT_SLPOUT);
     tft->writecommand(TFT_DISPON);

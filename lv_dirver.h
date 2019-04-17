@@ -10,7 +10,7 @@ int tftGetScreenHeight();
 int tftGetScreenWidth();
 void touch_timer_create();
 void display_off();
-void display_on();
+void display_wakeup();
 void display_sleep();
 void backlight_init(void);
 void backlight_setting(unsigned char level);

@@ -5,7 +5,8 @@
 #include <Arduino.h>
 #include <time.h>
 
-#define ACSIP_S7XG
+// #define ACSIP_S7XG
+#define UBOX_M8N_GPS
 
 typedef enum {
     DIRECTION_TOP_EDGE        = 0,    /* Top edge of the board points towards the ceiling */
