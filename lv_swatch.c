@@ -8,7 +8,7 @@
  *********************/
 #ifdef ESP32
 #include <lvgl.h>
-#include "lv_setting.h"
+// #include "lv_setting.h"
 #include "struct_def.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"

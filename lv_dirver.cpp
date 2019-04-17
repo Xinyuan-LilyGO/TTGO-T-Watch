@@ -2,130 +2,20 @@
 #include <TFT_eSPI.h>
 #include <Ticker.h>
 #include "board_def.h"
-#include <Adafruit_FT6206.h>
 #include <lvgl.h>
-#include "lv_setting.h"
+// #include "lv_setting.h"
 #include "freertos/FreeRTOS.h"
+#include <FT5206.h>
+
+#define BACKLIGHT_CHANNEL   ((uint8_t)1)
 
 static TFT_eSPI *tft = nullptr;
-static Adafruit_FT6206 *tp = nullptr;
+static FT5206_Class *tp = nullptr;
 static Ticker lvTicker1;
 static Ticker lvTicker2;
 static bool tpInit = false;
-
 static TimerHandle_t touch_handle = NULL;
 
-
-
-class FT5206_Class
-{
-#define FT5206_SLAVE_ADDRESS    (0x38)
-
-#define FT5206_MODE_REG         (0x00)
-#define FT5206_TOUCHES_REG      (0x02)
-#define FT5206_VENDID_REG       (0xA8)
-#define FT5206_CHIPID_REG       (0xA3)
-#define FT5206_THRESHHOLD_REG   (0x80)
-#define FT5206_POWER_REG        (0x87)
-
-#define FT5206_MONITOR         (0x01)
-#define FT5206_SLEEP_IN        (0x03)
-
-#define FT5206_VENDID           0x11
-#define FT6206_CHIPID           0x06
-#define FT6236_CHIPID           0x36
-#define FT6236U_CHIPID          0x64
-
-public:
-    FT5206_Class();
-
-    int begin(TwoWire &port = Wire, uint8_t addr = FT5206_SLAVE_ADDRESS)
-    {
-        uint8_t val;
-        _readByte(FT5206_VENDID_REG, 1, &val);
-        if (val != FT5206_VENDID) {
-            return false;
-        }
-        _readByte(FT5206_CHIPID_REG, 1, &val);
-        if ((val != FT6206_CHIPID) && (val != FT6236_CHIPID) && (val != FT6236U_CHIPID)) {
-            return false;
-        }
-    }
-
-    // valid touching detect threshold.
-    void adjustTheshold(uint8_t thresh)
-    {
-        _writeByte(FT5206_THRESHHOLD_REG, 1, &thresh);
-    }
-
-    bool getPoint()
-    {
-        _readByte(0x00, 16, _data);
-        // touches = _data[0x02];
-        // if ((touches > 2) || (touches == 0)) {
-        //     touches = 0;
-        // }
-        for (uint8_t i = 0; i < 2; i++) {
-            _x[i] = _data[0x03 + i * 6] & 0x0F;
-            _x[i] <<= 8;
-            _x[i] |= _data[0x04 + i * 6];
-            _y[i] = _data[0x05 + i * 6] & 0x0F;
-            _y[i] <<= 8;
-            _y[i] |= _data[0x06 + i * 6];
-            _id[i] = _data[0x05 + i * 6] >> 4;
-        }
-    }
-
-    uint8_t isTouched()
-    {
-        uint8_t val;
-        _readByte(FT5206_TOUCHES_REG, 1, &val);
-        return val;
-    }
-
-    void enterSleepMode()
-    {
-        uint8_t val = FT5206_SLEEP_IN;
-        _writeByte(FT5206_POWER_REG, 1, &val);
-    }
-
-    void enterMonitorMode()
-    {
-        uint8_t val = FT5206_MONITOR;
-        _writeByte(FT5206_POWER_REG, 1, &val);
-    }
-
-private:
-
-    int _readByte(uint8_t reg, uint8_t nbytes, uint8_t *data)
-    {
-        _i2cPort->beginTransmission(_address);
-        _i2cPort->write(reg);
-        _i2cPort->endTransmission();
-        _i2cPort->requestFrom(_address, nbytes);
-        uint8_t index = 0;
-        while (_i2cPort->available())
-            data[index++] = _i2cPort->read();
-    }
-
-    int _writeByte(uint8_t reg, uint8_t nbytes, uint8_t *data)
-    {
-        _i2cPort->beginTransmission(_address);
-        _i2cPort->write(reg);
-        for (uint8_t i = 0; i < nbytes; i++) {
-            _i2cPort->write(data[i]);
-        }
-        _i2cPort->endTransmission();
-    }
-
-    uint8_t _address;
-    uint8_t _data[16];
-    uint16_t _x[2];
-    uint16_t _y[2];
-    uint16_t _id[2];
-    bool _init = false;
-    TwoWire *_i2cPort;
-};
 
 
 void touch_timer_callback( TimerHandle_t xTimer )
@@ -193,7 +83,7 @@ void display_off()
 {
     tft->writecommand(TFT_DISPOFF);
     tft->writecommand(TFT_SLPIN);
-    tp->sleepIn();
+    tp->enterSleepMode();
 }
 
 void display_sleep()
@@ -218,8 +108,8 @@ void display_init()
     pinMode(TP_INT, INPUT);
     Wire.begin(I2C_SDA, I2C_SCL);
     // Wire.setClock(200000);
-    tp = new Adafruit_FT6206();
-    if (! tp->begin(40)) {  // pass in 'sensitivity' coefficient
+    tp = new FT5206_Class();
+    if (! tp->begin(Wire)) {  // pass in 'sensitivity' coefficient
         Serial.println("Couldn't start FT6206 touchscreen controller");
     } else {
         tpInit = true;
@@ -238,7 +128,7 @@ void display_init()
     lv_indev_drv_t indev_drv;
     indev_drv.type = LV_INDEV_TYPE_POINTER;
     indev_drv.read =  [] (lv_indev_data_t *data) -> bool {
-        static TS_Point p;
+        static TP_Point p;
         if (!tpInit)    return false;
         data->state = tp->touched() ? LV_INDEV_STATE_PR : LV_INDEV_STATE_REL;
         if (data->state == LV_INDEV_STATE_PR)
@@ -265,5 +155,57 @@ void display_init()
     });
 
     touch_timer_create();
+}
+
+
+
+void backlight_init(void)
+{
+    ledcAttachPin(TFT_BL, 1); // assign RGB led pins to channels
+    ledcSetup(BACKLIGHT_CHANNEL, 12000, 8);   // 12 kHz PWM, 8-bit resolution
+    // ledcWrite(BACKLIGHT_CHANNEL, 255);
+}
+
+
+uint8_t backlight_getLevel()
+{
+    return ledcRead(BACKLIGHT_CHANNEL);
+}
+
+void backlight_adjust(uint8_t level)
+{
+    ledcWrite(BACKLIGHT_CHANNEL, level);
+}
+
+void backlight_setting(unsigned char level)
+{
+    switch (level) {
+    case 1:
+        ledcWrite(BACKLIGHT_CHANNEL, 100);
+        break;
+    case 2:
+        ledcWrite(BACKLIGHT_CHANNEL, 200);
+        break;
+    case 3:
+        ledcWrite(BACKLIGHT_CHANNEL, 255);
+        break;
+    default:
+        break;
+    }
+}
+
+bool isBacklightOn()
+{
+    return (bool)ledcRead(BACKLIGHT_CHANNEL);
+}
+
+void backlight_off()
+{
+    ledcWrite(BACKLIGHT_CHANNEL, 0);
+}
+
+void backlight_on()
+{
+    ledcWrite(BACKLIGHT_CHANNEL, 200);
 }
 

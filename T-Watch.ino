@@ -8,7 +8,7 @@
 #include "struct_def.h"
 #include <WiFi.h>
 #include <lvgl.h>
-#include "lv_setting.h"
+// #include "lv_setting.h"
 #include "lv_swatch.h"
 #include "gps_task.h"
 #include "motion_task.h"
@@ -299,9 +299,25 @@ void lora_test()
     }
 }
 
+
+
+// FT5206_Class ft;
+// Adafruit_FT6206 ft6206;
 void setup()
 {
     Serial.begin(115200);
+
+    // Wire.begin(I2C_SDA, I2C_SCL);
+    // // // ft6206.begin();
+    // ft.begin(Wire);
+    // for (;;) {
+    //     TP_Point tp = ft.getPoint(0);
+    //     // TS_Point tp = ft6206.getPoint();
+
+    //     Serial.printf("x:%d y:%d\n", tp.x, tp.y);
+    //     delay(500);
+    // }
+
 #if 0
     Serial1.begin(115200, SERIAL_8N1, GPS_RX, GPS_TX );
     Wire1.begin(SEN_SDA, SEN_SCL);
@@ -599,13 +615,7 @@ void power_handle(void *param)
             data.vbus_vol = axp.getVbusVoltage();
             data.vbus_cur = axp.getVbusCurrent();
             data.batt_vol = axp.getBattVoltage();
-            if (axp.isChargeing())
-            {
-                data.batt_cur = axp.getBattChargeCurrent();
-            } else
-            {
-                data.batt_cur = axp.getBattDischargeCurrent();
-            }
+            data.batt_cur = axp.isChargeing() ? data.batt_cur = axp.getBattChargeCurrent() : axp.getBattDischargeCurrent();
             lv_update_power_info(&data);
         });
         break;
@@ -627,17 +637,18 @@ void power_handle(void *param)
             if (isBacklightOn()) {
                 backlight_off();
                 display_sleep();
-                //TODO 
+                //TODO
                 //.. TP SLEEP
                 //.. TFT SLEEP
                 axp.setPowerOutPut(AXP202_LDO2, AXP202_OFF);
-                rtc_clk_cpu_freq_set(RTC_CPU_FREQ_80M);
+                // rtc_clk_cpu_freq_set(RTC_CPU_FREQ_80M);//~22mA
+                rtc_clk_cpu_freq_set(RTC_CPU_FREQ_2M);//~2.5mA
             } else {
                 rtc_clk_cpu_freq_set(RTC_CPU_FREQ_240M);
                 axp.setPowerOutPut(AXP202_LDO2, AXP202_ON);
                 backlight_on();
                 display_on();
-                touch_timer_create();  
+                touch_timer_create();
             }
         }
         axp.clearIRQ();
