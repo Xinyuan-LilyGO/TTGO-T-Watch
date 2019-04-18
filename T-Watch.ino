@@ -18,6 +18,10 @@
 #include <pcf8563.h>
 #include <soc/rtc.h>
 
+#if defined(LV_PLAY_AUDIO)
+#include "lv_play.h"
+#endif
+
 /*********************
  *      DEFINES
  *********************/
@@ -728,6 +732,11 @@ void loop()
 #if defined(ACSIP_S7XG)
                 Serial.println("MESS_EVENT_LORA event");
                 s7xg_handle(&event_data.lora);
+#endif
+                break;
+            case MESS_EVENT_PLAY:
+#if defined(LV_PLAY_AUDIO)
+                play_handle(&event_data.play);
 #endif
                 break;
             default:

@@ -7,6 +7,8 @@
 
 // #define ACSIP_S7XG
 #define UBOX_M8N_GPS
+#define LV_PLAY_AUDIO
+
 
 typedef enum {
     DIRECTION_TOP_EDGE        = 0,    /* Top edge of the board points towards the ceiling */
@@ -27,6 +29,7 @@ typedef enum {
     MESS_EVENT_TIME,
     MESS_EVENT_POWER,
     MESS_EVENT_LORA,
+    MESS_EVENT_PLAY
 } message_type_t;
 
 typedef enum {
@@ -156,6 +159,19 @@ typedef struct {
     void *data;
 } lora_struct_t;
 
+
+#ifdef LV_PLAY_AUDIO
+typedef enum {
+    LVGL_PLAY_START,
+    LVGL_PLAY_STOP
+} play_event_t;
+typedef struct {
+    play_event_t event;
+    char *name;
+} play_struct_t;
+#endif
+
+
 typedef struct {
     union {
         gps_struct_t gps;
@@ -165,6 +181,9 @@ typedef struct {
         file_struct_t file;
         power_struct_t power;
         lora_struct_t lora;
+#ifdef LV_PLAY_AUDIO
+        play_struct_t play;
+#endif
     };
     void *arg;
     message_type_t type;
