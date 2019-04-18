@@ -8,7 +8,6 @@
  *********************/
 #ifdef ESP32
 #include <lvgl.h>
-// #include "lv_setting.h"
 #include "struct_def.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -508,8 +507,6 @@ static void lv_setWinBtnInvaild(bool en)
 
 static void lv_setWinMenuHeader(const char *title, const void *img_src, lv_action_t action)
 {
-    // lv_obj_t *win_btn = lv_win_add_btn(g_menu_win, SYMBOL_HOME, win_btn_click);
-    // lv_win_set_btn_size(g_menu_win, 45);
     lv_win_ext_t *ext = lv_obj_get_ext_attr(g_menu_win);
     lv_obj_t *obj = NULL;
     obj = lv_obj_get_child_back(ext->header, NULL);
@@ -548,17 +545,29 @@ static lv_point_t lv_font_get_size(lv_obj_t *obj)
  *                          BATTERY
  *
  * ******************************************************************/
-static void monitor_callback(void *prarm)
+void lv_update_battery_percent(int percent)
 {
+    static void *img_src[4] = {
+        &img_batt4,
+        &img_batt3,
+        &img_batt2,
+        &img_batt1,
+    };
     if (g_menu_in) {
-        lv_img_set_src(img_batt, lv_get_batt_icon());
+        int i = 0;
+        if (percent > 92) {
+            i = 3;
+        }
+        else if (percent > 80) {
+            i = 2;
+        }
+        else if (percent > 50) {
+            i = 1;
+        } else {
+            i = 0;
+        }
+        lv_img_set_src(img_batt, img_src[i]);
     }
-}
-
-static void batt_monitor_task()
-{
-    if (!monitor_handle)
-        monitor_handle =  lv_task_create(monitor_callback, 5000, LV_TASK_PRIO_LOW, NULL);
 }
 
 static const void *lv_get_batt_icon()
@@ -1625,7 +1634,6 @@ void lv_main(void)
     lv_imgbtn_set_action(menuBtn, LV_BTN_ACTION_PR, menubtn_action);
     lv_obj_align(menuBtn, NULL, LV_ALIGN_IN_BOTTOM_MID, 0, -30);
 
-    batt_monitor_task();
 }
 
 

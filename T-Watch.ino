@@ -8,7 +8,6 @@
 #include "struct_def.h"
 #include <WiFi.h>
 #include <lvgl.h>
-// #include "lv_setting.h"
 #include "lv_swatch.h"
 #include "gps_task.h"
 #include "motion_task.h"
@@ -18,7 +17,6 @@
 #include <SPI.h>
 #include <pcf8563.h>
 #include <soc/rtc.h>
-// #include <s7xg.h>
 
 /*********************
  *      DEFINES
@@ -535,7 +533,9 @@ void setup()
     }
 
     xTaskCreate(time_task, "time", 2048, NULL, 20, NULL);
+
 }
+
 
 
 void wifi_handle(void *data)
@@ -738,13 +738,16 @@ void loop()
     }
 }
 
+#define BATTERY_POLL_PERIOD_SEC     5
+
 static void time_task(void *param)
 {
+    uint8_t pollBattery = 0;
     struct tm time;
     uint8_t prev_min = 0;
     task_event_data_t event_data;
     Serial.println("Time Task Create ...");
-    // configTzTime("CST-8", "pool.ntp.org");
+
     for (;;) {
         if (getLocalTime(&time)) {
             event_data.type = MESS_EVENT_TIME;
@@ -752,10 +755,18 @@ static void time_task(void *param)
             event_data.time.time = time;
             xQueueSend(g_event_queue_handle, &event_data, portMAX_DELAY);
         }
+
+        if (++pollBattery >= BATTERY_POLL_PERIOD_SEC) {
+            pollBattery = 0;
+            if (!axp.isChargeing()) {
+                int percent = axp.getBattPercentage();
+                Serial.printf("Update BATTERY : %d\n", percent);
+                lv_update_battery_percent(percent);
+            }
+        }
         delay(1000);
     }
 }
-
 
 extern "C" int get_batt_percentage()
 {

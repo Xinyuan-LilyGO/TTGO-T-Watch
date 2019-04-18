@@ -3,7 +3,6 @@
 #include <Ticker.h>
 #include "board_def.h"
 #include <lvgl.h>
-// #include "lv_setting.h"
 #include "freertos/FreeRTOS.h"
 #include <FT5206.h>
 
