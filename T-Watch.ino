@@ -151,7 +151,6 @@ int waitForResp(const char *command, const char *resp, unsigned int timeout)
         if (timerEnd - timerStart > 1000 * timeout) {
             if (command) {
                 Serial.printf("[%s]Time out\n", command);
-
             } else
                 Serial.println("Time out");
             return -1;
@@ -461,7 +460,7 @@ void setup()
 
     SPI.begin(TFT_SCLK, TFT_MISO, TFT_MOSI, -1);
 
-    // lv_filesystem_init();
+    lv_filesystem_init();
 
     display_init();
 
@@ -536,7 +535,6 @@ void setup()
     }
 
     xTaskCreate(time_task, "time", 2048, NULL, 20, NULL);
-
 }
 
 
@@ -807,8 +805,6 @@ extern "C" const char *get_wifi_mac()
 {
     return WiFi.macAddress().c_str();
 }
-
-
 
 void gps_power_on()
 {
