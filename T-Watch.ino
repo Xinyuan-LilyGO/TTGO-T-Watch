@@ -623,19 +623,14 @@ void power_handle(void *param)
         }
         if (axp.isPEKShortPressIRQ()) {
             if (isBacklightOn()) {
-                lv_task_enable(false);
                 backlight_off();
                 display_sleep();
-                //TODO
-                //.. TP SLEEP
-                //.. TFT SLEEP
                 axp.setPowerOutPut(AXP202_LDO2, AXP202_OFF);
                 // rtc_clk_cpu_freq_set(RTC_CPU_FREQ_80M);//~22mA
                 rtc_clk_cpu_freq_set(RTC_CPU_FREQ_2M);//~2.5mA
             } else {
                 rtc_clk_cpu_freq_set(RTC_CPU_FREQ_240M);
                 axp.setPowerOutPut(AXP202_LDO2, AXP202_ON);
-                lv_task_enable(true);
                 backlight_on();
                 display_wakeup();
                 touch_timer_create();

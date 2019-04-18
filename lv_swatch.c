@@ -493,6 +493,19 @@ static void  lv_lora_setting_destroy(void)
  *                          OHTER
  *
  * ******************************************************************/
+
+static void lv_setWinBtnInvaild(bool en)
+{
+    lv_win_ext_t *ext = lv_obj_get_ext_attr(g_menu_win);
+    lv_obj_t *obj = NULL;
+    obj = lv_obj_get_child_back(ext->header, NULL);
+    obj = lv_obj_get_child_back(ext->header, obj);
+    if (obj != NULL) {
+        lv_obj_set_click(obj, en);
+    }
+}
+
+
 static void lv_setWinMenuHeader(const char *title, const void *img_src, lv_action_t action)
 {
     // lv_obj_t *win_btn = lv_win_add_btn(g_menu_win, SYMBOL_HOME, win_btn_click);
@@ -1193,6 +1206,7 @@ static lv_res_t wifiap_list_action(lv_obj_t *obj)
 uint8_t lv_wifi_list_add(const char *ssid, int32_t rssi, uint8_t ch)
 {
     if (!gObjecter) {
+        lv_setWinBtnInvaild(true);
         lv_obj_clean(gContainer);
         gObjecter = lv_list_create(gContainer, NULL);
         lv_obj_set_size(gObjecter,  g_menu_view_width, g_menu_view_height);
@@ -1207,6 +1221,7 @@ uint8_t lv_wifi_list_add(const char *ssid, int32_t rssi, uint8_t ch)
 static lv_res_t wifi_scan_btn_cb(struct _lv_obj_t *obj)
 {
 #ifdef ESP32
+    lv_setWinBtnInvaild(false);
     task_event_data_t event_data;
     event_data.type = MESS_EVENT_WIFI;
     event_data.wifi.event = LVGL_WIFI_CONFIG_SCAN;

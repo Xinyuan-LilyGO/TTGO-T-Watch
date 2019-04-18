@@ -28,12 +28,14 @@ TTGO T-Watch
 
 
 - [TFT_eSPI](https://github.com/Bodmer/TFT_eSPI)
-- [FT5206_Library](https://github.com/lewisxhe/FT5206_Library)
 - [TinyGPSPlus](https://github.com/mikalhart/TinyGPSPlus)
-- [Lvgl](https://github.com/littlevgl/lv_arduino.git)
-- [AXP20X_Library](https://github.com/lewisxhe/AXP20X_Library)
+- 
+- [Lvgl](https://github.com/lewisxhe/lvgl)
+- [FT5206_Library](https://github.com/lewisxhe/FT5206_Library)
+- [AXP202X_Library](https://github.com/lewisxhe/AXP202X_Library)
 - [PCF8563_Library](https://github.com/lewisxhe/PCF8563_Library)
-- [BMA423](https://github.com/lewisxhe/BMA423-Arduino)
+- [BMA423_Library](https://github.com/lewisxhe/BMA423_Library)
+- [S7xG_Library](https://github.com/lewisxhe/S7xG_Library)
 
 ### The pictures and fonts used in the program are from the network. If there is any infringement, please inform the author.
 

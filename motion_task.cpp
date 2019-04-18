@@ -48,7 +48,6 @@ static void motion_task(void *param)
         } else if (bits & MOTION_GET_TEMP_BIT) {
             bma423_read_temp(&temp);
             snprintf(buf, sizeof(buf), "%.2f", temp);
-            // Serial.println(buf);
             lv_main_temp_update(buf);
             xEventGroupClearBits(motionEventGroup,  MOTION_GET_TEMP_BIT );
 
