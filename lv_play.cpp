@@ -36,8 +36,11 @@ void play_task(void *param)
             if (mp3->isRunning()) {
                 if (!mp3->loop()) {
                     mp3->stop();
+                    Serial.println("stop Done..");
                     xEventGroupClearBits(play_event_group,  PLAY_TASK_BIT );
                 }
+            } else {
+                Serial.println("Done..");
             }
         }
     }
@@ -45,26 +48,51 @@ void play_task(void *param)
 
 void play_handle(void *param)
 {
+    static bool start = false;
     play_struct_t *p = (play_struct_t *)param;
     switch (p->event) {
     case LVGL_PLAY_START:
-        file = new AudioFileSourceSD(p->name);
-        id3 = new AudioFileSourceID3(file);
-        out = new AudioOutputI2S(0, 1);
-        mp3 = new AudioGeneratorMP3();
-        mp3->begin(id3, out);
-        xEventGroupSetBits(play_event_group, PLAY_TASK_BIT);
+        if (!start) {
+            start = true;
+            Serial.printf("LVGL_PLAY_START: %s\n", p->name);
+            file = new AudioFileSourceSD(p->name);
+            id3 = new AudioFileSourceID3(file);
+            out = new AudioOutputI2S(0, 1);
+            mp3 = new AudioGeneratorMP3();
+            mp3->begin(id3, out);
+            xEventGroupSetBits(play_event_group, PLAY_TASK_BIT);
+        }
         break;
 
     case LVGL_PLAY_STOP:
-        if (mp3->isRunning()) {
-            mp3->stop();
+        if (start) {
+            start = false;
+            Serial.printf("%s\n", p->name);
+            if (mp3->isRunning()) {
+                mp3->stop();
+            }
+            delete file;
+            delete id3;
+            delete out;
+            delete mp3;
+            xEventGroupClearBits(play_event_group,  PLAY_TASK_BIT);
         }
-        delete file;
-        delete id3;
-        delete out;
-        delete mp3;
-        xEventGroupClearBits(play_event_group,  PLAY_TASK_BIT );
+        break;
+    case LVGL_PLAY_PREV:
+    case LVGL_PLAY_NEXT:
+        if (start) {
+            xEventGroupClearBits(play_event_group,  PLAY_TASK_BIT);
+            Serial.printf("LVGL_PLAY_PREV: %s\n", p->name);
+            if (mp3->isRunning()) {
+                mp3->stop();
+            }
+            delete file;
+            delete id3;
+            file = new AudioFileSourceSD(p->name);
+            id3 = new AudioFileSourceID3(file);
+            mp3->begin(id3, out);
+            xEventGroupSetBits(play_event_group, PLAY_TASK_BIT);
+        }
         break;
     default:
         break;

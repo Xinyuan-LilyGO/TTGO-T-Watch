@@ -173,6 +173,11 @@ LV_IMG_DECLARE(img_ttgo);
 // LV_IMG_DECLARE(img_calendar);
 LV_IMG_DECLARE(img_lora);
 
+#define LV_PLAY_AUDIO
+
+#ifdef LV_PLAY_AUDIO
+LV_IMG_DECLARE(img_music);
+#endif
 
 typedef lv_res_t (*lv_menu_action_t) (lv_obj_t *obj);
 typedef void (*lv_menu_destory_t) (void);
@@ -269,6 +274,16 @@ static void lv_menu_del();
 static const void *lv_get_batt_icon();
 static lv_res_t win_btn_click(lv_obj_t *btn);
 
+static void lv_setWinBtnInvaild(bool en);
+lv_res_t lv_timer_start(void (*timer_callback)(void *), uint32_t period, void *param);
+static void lv_setWinMenuHeader(const char *title, const void *img_src, lv_action_t action);
+
+
+#ifdef LV_PLAY_AUDIO
+static lv_res_t lv_music_setting(lv_obj_t *par);
+static void lv_music_setting_destroy();
+#endif
+
 static void *motion_img_src[4] = {
     &img_direction_up,
     &img_direction_down,
@@ -295,6 +310,9 @@ static lv_wifi_struct_t wifi_data[] = {
 };
 
 static lv_menu_struct_t menu_data[]  = {
+#ifdef LV_PLAY_AUDIO
+    {.name = "Music", .callback = lv_music_setting, .destroy = lv_music_setting_destroy, .src_img = &img_music},
+#endif
     {.name = "LoRa", .callback = lv_lora_setting, .destroy = lv_lora_setting_destroy, .src_img = &img_lora},
     {.name = "GPS", .callback = lv_gps_setting, .destroy = lv_gps_setting_destroy, .src_img = &img_placeholder},
     {.name = "WiFi", .callback = lv_wifi_setting, .destroy = lv_wifi_setting_destroy, .src_img = &img_wifi},
@@ -303,6 +321,241 @@ static lv_menu_struct_t menu_data[]  = {
     {.name = "SD Card", .callback = lv_file_setting, .destroy = lv_file_setting_destroy, .src_img = &img_folder},
     {.name = "Sensor", .callback = lv_motion_setting, .destroy = lv_motion_setting_destroy, .src_img = &img_directions},
 };
+
+/*********************************************************************
+ *
+ *                          MUSIC
+ *
+ * ******************************************************************/
+
+
+#ifdef LV_PLAY_AUDIO
+
+static void music_main();
+
+static lv_obj_t *play_main = NULL;
+static lv_obj_t *button[3];
+static void *src_img_btn[3] =  {SYMBOL_PREV, SYMBOL_PLAY, SYMBOL_NEXT, SYMBOL_PAUSE};
+static lv_obj_t *img_btn[3];
+static uint8_t curr_music_index = 0;
+
+
+static lv_obj_t *lv_list_get_index_btn(int32_t index)
+{
+    lv_list_ext_t *ext = lv_obj_get_ext_attr(gObjecter);
+    if (index >= ext->size)return NULL;
+    uint32_t count = 0;
+    lv_obj_t *e = lv_list_get_next_btn(gObjecter, NULL);
+    while (e != NULL) {
+        if (count == index) {
+            return e;
+        }
+        // printf("%s\n", lv_list_get_btn_text(e));
+        e = lv_list_get_next_btn(gObjecter, e);
+        count ++;
+    }
+    return NULL;
+}
+
+static const char *lv_list_get_index_btn_text(int32_t index)
+{
+    lv_obj_t *obj = lv_list_get_index_btn(index);
+    return obj ? lv_list_get_btn_text(obj) : NULL;
+}
+
+static void lv_refs_music_lsit(void)
+{
+    // lv_music_list_add(NULL);
+    char *name[] = {
+        "A.mp3", "B.mp3", "C.mp3", "D.mp3", "E.mp3", "F.mp3", "G.mp3",
+    };
+    for (int i = 0; i < sizeof(name) / sizeof(name[0]); i++) {
+        lv_music_list_add(name[i]);
+    }
+}
+
+static void lv_music_set_curr(const char *name)
+{
+    lv_obj_t *obj = lv_obj_get_child_back(play_main, NULL);
+    lv_label_set_text(obj, name);
+    lv_obj_align(obj, play_main, LV_ALIGN_IN_TOP_MID, 0, 0);
+}
+
+static lv_res_t music_list_action(lv_obj_t *obj)
+{
+    curr_music_index = lv_list_get_btn_index(gObjecter, obj);
+    const char *name = lv_list_get_btn_text(obj);
+    printf("index  %d name:%s\n",  curr_music_index, name);
+
+    music_main(name);
+#ifdef ESP32
+    task_event_data_t event_data;
+    event_data.type = MESS_EVENT_PLAY;
+    event_data.play.event = LVGL_PLAY_START;
+    strlcpy(event_data.play.name, name, sizeof(event_data.play.name));
+    xQueueSend(g_event_queue_handle, &event_data, portMAX_DELAY);
+#endif
+}
+
+static lv_res_t music_play_action(lv_obj_t *obj)
+{
+    lv_setWinMenuHeader(NULL, SYMBOL_HOME, win_btn_click);
+    lv_obj_set_hidden(gObjecter, false);
+    lv_obj_del(play_main);
+
+#ifdef ESP32
+    task_event_data_t event_data;
+    event_data.type = MESS_EVENT_PLAY;
+    event_data.play.event = LVGL_PLAY_STOP;
+    xQueueSend(g_event_queue_handle, &event_data, portMAX_DELAY);
+#endif
+}
+
+
+static lv_res_t lv_music_forward_action(lv_obj_t *obj)
+{
+    lv_list_ext_t *ext = lv_obj_get_ext_attr(gObjecter);
+    curr_music_index = curr_music_index - 1 < 0 ? curr_music_index = ext->size - 1 : curr_music_index - 1;
+    const char *name = lv_list_get_index_btn_text(curr_music_index);
+#ifdef ESP32
+    task_event_data_t event_data;
+    event_data.type = MESS_EVENT_PLAY;
+    event_data.play.event = LVGL_PLAY_PREV;
+    strlcpy(event_data.play.name, name, sizeof(event_data.play.name));
+    xQueueSend(g_event_queue_handle, &event_data, portMAX_DELAY);
+    lv_music_set_curr(name);
+#else
+    lv_music_set_curr(name);
+    printf("%s\n", name);
+#endif
+    return LV_RES_OK; /*Return OK if the button is not deleted*/
+
+}
+static lv_res_t lv_music_play_action(lv_obj_t *obj)
+{
+    static bool playing  = false;
+    lv_img_set_src(img_btn[1], playing ? SYMBOL_PLAY : SYMBOL_PAUSE);
+    playing = !playing;
+
+#ifdef ESP32
+    // task_event_data_t event_data;
+    // event_data.type = MESS_EVENT_PLAY;
+    // event_data.play.event = LVGL_PLAY_START;
+    // strlcpy(event_data.play.name, name, sizeof(event_data.play.name));
+    // xQueueSend(g_event_queue_handle, &event_data, portMAX_DELAY);
+#endif
+    return LV_RES_OK; /*Return OK if the button is not deleted*/
+}
+
+
+static lv_res_t lv_music_next_action(lv_obj_t *obj)
+{
+    lv_list_ext_t *ext = lv_obj_get_ext_attr(gObjecter);
+    curr_music_index = curr_music_index + 1 >= ext->size ? curr_music_index = 0 : curr_music_index + 1;
+
+    const char *name = lv_list_get_index_btn_text(curr_music_index);
+#ifdef ESP32
+    task_event_data_t event_data;
+    event_data.type = MESS_EVENT_PLAY;
+    event_data.play.event = LVGL_PLAY_NEXT;
+    strlcpy(event_data.play.name, name, sizeof(event_data.play.name));
+    xQueueSend(g_event_queue_handle, &event_data, portMAX_DELAY);
+    lv_music_set_curr(name);
+#else
+    lv_music_set_curr(name);
+    printf("%s\n", lv_list_get_index_btn_text(curr_music_index));
+#endif
+    return LV_RES_OK; /*Return OK if the button is not deleted*/
+}
+
+
+
+static void music_main(const char *name)
+{
+    lv_setWinMenuHeader("Play", SYMBOL_LEFT, music_play_action);
+    lv_obj_set_hidden(gObjecter, true);
+
+    play_main = lv_obj_create(gContainer, NULL);
+    lv_obj_set_size(play_main,  g_menu_view_width, g_menu_view_height);
+    lv_obj_set_style(play_main, &lv_style_transp_fit);
+
+
+    lv_obj_t *label = lv_label_create(play_main, NULL);
+    lv_label_set_text(label, name);
+    lv_label_set_long_mode(label, LV_LABEL_LONG_ROLL);
+    lv_obj_set_width(label, 150);
+    lv_obj_align(label, play_main, LV_ALIGN_IN_TOP_MID, 0, 0);
+
+    for (uint8_t i = 0; i < 3; i++) {
+        button[i] = lv_btn_create(play_main, NULL);
+        lv_obj_set_size(button[i], 50, 50);
+        img_btn[i] = lv_img_create(button[i], NULL);
+        lv_img_set_src(img_btn[i], src_img_btn[i]);
+    }
+    lv_obj_align(button[0], play_main, LV_ALIGN_IN_LEFT_MID, 25, 15);
+    for (uint8_t i = 1; i < 3; i++) {
+        lv_obj_align(button[i], button[i - 1], LV_ALIGN_OUT_RIGHT_MID, 10, 0);
+    }
+    lv_btn_set_action(button[0], LV_BTN_ACTION_CLICK, lv_music_forward_action);
+    lv_btn_set_action(button[1], LV_BTN_ACTION_CLICK, lv_music_play_action);
+    lv_btn_set_action(button[2], LV_BTN_ACTION_CLICK, lv_music_next_action);
+}
+
+void lv_music_list_add(const char *name)
+{
+    if (!gObjecter) {
+        lv_setWinBtnInvaild(true);
+        if (!name) {
+            lv_obj_t *obj = lv_obj_get_child_back(gContainer, NULL);
+            lv_label_set_text(obj, "No Search Files");
+            lv_obj_align(obj, NULL, LV_ALIGN_CENTER, 0, -10);
+            return;
+        }
+        lv_obj_clean(gContainer);
+        gObjecter = lv_list_create(gContainer, NULL);
+        printf("gObjecter : %p\n", gObjecter);
+        lv_obj_set_size(gObjecter,  g_menu_view_width, g_menu_view_height);
+        lv_obj_align(gObjecter, gContainer, LV_ALIGN_CENTER, 0, 0);
+        lv_obj_set_style(gObjecter, &lv_style_transp_fit);
+    }
+    lv_obj_t *obj = lv_list_add(gObjecter, SYMBOL_AUDIO, name, music_list_action);
+    printf("obj --> %p\n", obj);
+    return LV_RES_OK;
+}
+
+static void lv_music_setting_destroy()
+{
+    printf("lv_music_setting_destroy\n");
+    lv_obj_del(gContainer);
+    gContainer = NULL;
+    gObjecter = NULL;
+}
+
+// Scan -- > List --> play
+static lv_res_t lv_music_setting(lv_obj_t *par)
+{
+    gContainer = lv_obj_create(par, NULL);
+    lv_obj_set_size(gContainer,  g_menu_view_width, g_menu_view_height);
+    lv_obj_set_style(gContainer, &lv_style_transp_fit);
+
+    lv_setWinBtnInvaild(false);
+    // lv_obj_clean(gContainer);
+    lv_obj_t *label = lv_label_create(gContainer, NULL);
+    lv_label_set_text(label, "Scaning...");
+    lv_obj_align(label, NULL, LV_ALIGN_CENTER, 0, -10);
+
+#ifdef ESP32
+    task_event_data_t event_data;
+    event_data.type = MESS_EVENT_FILE;
+    event_data.file.event = LVGL_MUSIC_SCAN;
+    xQueueSend(g_event_queue_handle, &event_data, portMAX_DELAY);
+#else
+    lv_timer_start(lv_refs_music_lsit, 1000, NULL);
+#endif
+
+    return LV_RES_OK;
+}
+#endif
 
 /*********************************************************************
  *
@@ -557,11 +810,9 @@ void lv_update_battery_percent(int percent)
         int i = 0;
         if (percent > 92) {
             i = 3;
-        }
-        else if (percent > 80) {
+        } else if (percent > 80) {
             i = 2;
-        }
-        else if (percent > 50) {
+        } else if (percent > 50) {
             i = 1;
         } else {
             i = 0;
@@ -1458,7 +1709,10 @@ void create_menu(lv_obj_t *par)
     lv_win_set_style(g_menu_win, LV_WIN_STYLE_BG, &style_txt);
 
     static const lv_point_t vp[] = {
-        {0, 0}, {1, 0}, {2, 0}, {3, 0}, {4, 0}, {5, 0}, {6, 0},// {7, 0},
+        {0, 0}, {1, 0}, {2, 0}, {3, 0}, {4, 0}, {5, 0}, {6, 0},
+#ifdef LV_PLAY_AUDIO
+        {7, 0},
+#endif
         {LV_COORD_MIN, LV_COORD_MIN}
     };
 

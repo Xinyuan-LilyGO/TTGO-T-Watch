@@ -9,7 +9,6 @@
 #define UBOX_M8N_GPS
 #define LV_PLAY_AUDIO
 
-
 typedef enum {
     DIRECTION_TOP_EDGE        = 0,    /* Top edge of the board points towards the ceiling */
     DIRECTION_BOTTOM_EDGE     = 1,    /* Bottom edge of the board points towards the ceiling */
@@ -47,6 +46,7 @@ typedef enum {
 
 typedef enum {
     LVGL_FILE_SCAN,
+    LVGL_MUSIC_SCAN,
 } file_event_t;
 
 typedef enum {
@@ -163,14 +163,17 @@ typedef struct {
 #ifdef LV_PLAY_AUDIO
 typedef enum {
     LVGL_PLAY_START,
-    LVGL_PLAY_STOP
+    LVGL_PLAY_STOP,
+    LVGL_PLAY_NEXT,
+    LVGL_PLAY_PREV,
+    LVGL_PLAY_PAUSE,
 } play_event_t;
+
 typedef struct {
     play_event_t event;
-    char *name;
+    char name[128];
 } play_struct_t;
 #endif
-
 
 typedef struct {
     union {

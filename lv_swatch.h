@@ -52,6 +52,7 @@ void charging_anim_stop();
 void lv_create_ttgo();
 void lora_add_message(const char *txt);
 void lv_update_battery_percent(int percent);
+void lv_music_list_add(const char *name);
 
 /**********************
  *      MACROS

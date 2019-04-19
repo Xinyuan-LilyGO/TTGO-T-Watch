@@ -246,7 +246,7 @@ size_t toHexString(const char *str, uint8_t *buffer, size_t size)
 // rf get_freq
 // rf get_pwr
 // rf get_sf
-// #define PINGPONG_TX
+#define PINGPONG_TX
 
 void lora_PingPong()
 {
@@ -370,7 +370,6 @@ void setup()
     }
 
 #endif
-// #define S7XG_DEBUG
 
 #if 0
     //tft test
@@ -385,6 +384,7 @@ void setup()
     display_init();
 
 #endif
+// #define S7XG_DEBUG
 
 #if defined(S7XG_DEBUG)
     Serial1.begin(115200, SERIAL_8N1, GPS_RX, GPS_TX );
@@ -395,7 +395,7 @@ void setup()
 
     // startGPS();
     // lora_test();
-    // lora_PingPong();
+    lora_PingPong();
 
     for (;;) {
         if (Serial1.available()) {
@@ -537,6 +537,10 @@ void setup()
     }
 
     xTaskCreate(time_task, "time", 2048, NULL, 20, NULL);
+
+#if defined(LV_PLAY_AUDIO)
+    plat_task_init();
+#endif
 
 }
 

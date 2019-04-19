@@ -115,6 +115,42 @@ static void listDir(fs::FS &fs, const char *dirname, uint8_t levels)
     }
 }
 
+
+int searchMusic(fs::FS &fs, const char *dirname, uint8_t levels)
+{
+#ifdef LV_PLAY_AUDIO
+    Serial.println("LVGL_MUSIC_SCAN");
+    int searchFiles = 0;
+    File root = fs.open(dirname);
+    if (!root) {
+        Serial.println("- failed to open directory");
+        lv_music_list_add(NULL);
+        return 0;
+    }
+    if (!root.isDirectory()) {
+        Serial.println(" - not a directory");
+        lv_music_list_add(NULL);
+        return 0;
+    }
+    File file = root.openNextFile();
+    while (file) {
+        if (!file.isDirectory()) {
+            String name = String(file.name());
+            Serial.println(file.name());
+            if (name.endsWith(".mp3")||name.endsWith(".MP3")) {
+                if (searchFiles++ > 50)return searchFiles;
+                lv_music_list_add(file.name());
+            }
+        }
+        file = root.openNextFile();
+    }
+    if (!searchFiles)
+        lv_music_list_add(NULL);
+    Serial.println("Scan Done");
+    return searchFiles;
+#endif
+}
+
 void file_handle(void *f)
 {
     file_struct_t *file = (file_struct_t *)f;
@@ -122,6 +158,9 @@ void file_handle(void *f)
     case LVGL_FILE_SCAN:
         Serial.println("LVGL_FILE_SCAN");
         listDir(f_dev, "/", 2);
+        break;
+    case LVGL_MUSIC_SCAN:
+        searchMusic(f_dev, "/", 2);
         break;
     default:
         break;
