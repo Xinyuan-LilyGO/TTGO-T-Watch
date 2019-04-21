@@ -8,6 +8,7 @@
 #include "struct_def.h"
 #include <WiFi.h>
 #include <lvgl.h>
+// #include "lv_setting.h"
 #include "lv_swatch.h"
 #include "gps_task.h"
 #include "motion_task.h"
@@ -17,11 +18,10 @@
 #include <SPI.h>
 #include <pcf8563.h>
 #include <soc/rtc.h>
-
-#if defined(LV_PLAY_AUDIO)
+// #include <s7xg.h>
+#ifdef LV_PLAY_AUDIO
 #include "lv_play.h"
 #endif
-
 /*********************
  *      DEFINES
  *********************/
@@ -246,7 +246,7 @@ size_t toHexString(const char *str, uint8_t *buffer, size_t size)
 // rf get_freq
 // rf get_pwr
 // rf get_sf
-#define PINGPONG_TX
+// #define PINGPONG_TX
 
 void lora_PingPong()
 {
@@ -370,6 +370,7 @@ void setup()
     }
 
 #endif
+// #define S7XG_DEBUG
 
 #if 0
     //tft test
@@ -384,7 +385,6 @@ void setup()
     display_init();
 
 #endif
-// #define S7XG_DEBUG
 
 #if defined(S7XG_DEBUG)
     Serial1.begin(115200, SERIAL_8N1, GPS_RX, GPS_TX );
@@ -395,7 +395,7 @@ void setup()
 
     // startGPS();
     // lora_test();
-    lora_PingPong();
+    // lora_PingPong();
 
     for (;;) {
         if (Serial1.available()) {
@@ -538,12 +538,10 @@ void setup()
 
     xTaskCreate(time_task, "time", 2048, NULL, 20, NULL);
 
-#if defined(LV_PLAY_AUDIO)
+#ifdef LV_PLAY_AUDIO
     plat_task_init();
 #endif
-
 }
-
 
 
 void wifi_handle(void *data)
@@ -632,8 +630,8 @@ void power_handle(void *param)
                 backlight_off();
                 display_sleep();
                 axp.setPowerOutPut(AXP202_LDO2, AXP202_OFF);
-                // rtc_clk_cpu_freq_set(RTC_CPU_FREQ_80M);//~22mA
-                rtc_clk_cpu_freq_set(RTC_CPU_FREQ_2M);//~2.5mA
+                rtc_clk_cpu_freq_set(RTC_CPU_FREQ_80M);//~22mA
+                // rtc_clk_cpu_freq_set(RTC_CPU_FREQ_2M);//~2.5mA
             } else {
                 rtc_clk_cpu_freq_set(RTC_CPU_FREQ_240M);
                 axp.setPowerOutPut(AXP202_LDO2, AXP202_ON);
@@ -698,6 +696,14 @@ void time_handle(void *param)
 void loop()
 {
     task_event_data_t event_data;
+    Serial.print("PriorityGet:");
+    Serial.println(uxTaskPriorityGet(NULL));
+
+    vTaskPrioritySet(NULL, 20);
+
+    Serial.print("Changle PriorityGet:");
+    Serial.println(uxTaskPriorityGet(NULL));
+
     for (;;) {
         if (xQueueReceive(g_event_queue_handle, &event_data, portMAX_DELAY) == pdPASS) {
             switch (event_data.type) {
@@ -738,11 +744,12 @@ void loop()
                 s7xg_handle(&event_data.lora);
 #endif
                 break;
+#ifdef LV_PLAY_AUDIO
             case MESS_EVENT_PLAY:
-#if defined(LV_PLAY_AUDIO)
+                Serial.println("MESS_EVENT_PLAY");
                 play_handle(&event_data.play);
-#endif
                 break;
+#endif
             default:
                 Serial.println("Error event");
                 break;
@@ -751,16 +758,13 @@ void loop()
     }
 }
 
-#define BATTERY_POLL_PERIOD_SEC     5
-
 static void time_task(void *param)
 {
-    uint8_t pollBattery = 0;
     struct tm time;
     uint8_t prev_min = 0;
     task_event_data_t event_data;
     Serial.println("Time Task Create ...");
-
+    // configTzTime("CST-8", "pool.ntp.org");
     for (;;) {
         if (getLocalTime(&time)) {
             event_data.type = MESS_EVENT_TIME;
@@ -768,18 +772,10 @@ static void time_task(void *param)
             event_data.time.time = time;
             xQueueSend(g_event_queue_handle, &event_data, portMAX_DELAY);
         }
-
-        if (++pollBattery >= BATTERY_POLL_PERIOD_SEC) {
-            pollBattery = 0;
-            if (!axp.isChargeing()) {
-                int percent = axp.getBattPercentage();
-                Serial.printf("Update BATTERY : %d\n", percent);
-                lv_update_battery_percent(percent);
-            }
-        }
         delay(1000);
     }
 }
+
 
 extern "C" int get_batt_percentage()
 {

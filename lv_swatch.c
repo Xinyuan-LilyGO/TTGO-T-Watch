@@ -399,16 +399,16 @@ static lv_res_t music_list_action(lv_obj_t *obj)
 
 static lv_res_t music_play_action(lv_obj_t *obj)
 {
-    lv_setWinMenuHeader(NULL, SYMBOL_HOME, win_btn_click);
-    lv_obj_set_hidden(gObjecter, false);
-    lv_obj_del(play_main);
-
 #ifdef ESP32
+    printf("play Stop\n");
     task_event_data_t event_data;
     event_data.type = MESS_EVENT_PLAY;
     event_data.play.event = LVGL_PLAY_STOP;
     xQueueSend(g_event_queue_handle, &event_data, portMAX_DELAY);
 #endif
+    lv_setWinMenuHeader(NULL, SYMBOL_HOME, win_btn_click);
+    lv_obj_set_hidden(gObjecter, false);
+    lv_obj_del(play_main);
 }
 
 
@@ -513,13 +513,13 @@ void lv_music_list_add(const char *name)
         }
         lv_obj_clean(gContainer);
         gObjecter = lv_list_create(gContainer, NULL);
-        printf("gObjecter : %p\n", gObjecter);
+        // printf("gObjecter : %p\n", gObjecter);
         lv_obj_set_size(gObjecter,  g_menu_view_width, g_menu_view_height);
         lv_obj_align(gObjecter, gContainer, LV_ALIGN_CENTER, 0, 0);
         lv_obj_set_style(gObjecter, &lv_style_transp_fit);
     }
     lv_obj_t *obj = lv_list_add(gObjecter, SYMBOL_AUDIO, name, music_list_action);
-    printf("obj --> %p\n", obj);
+    // printf("obj --> %p\n", obj);
     return LV_RES_OK;
 }
 
@@ -809,13 +809,13 @@ void lv_update_battery_percent(int percent)
     if (g_menu_in) {
         int i = 0;
         if (percent > 92) {
-            i = 3;
-        } else if (percent > 80) {
-            i = 2;
-        } else if (percent > 50) {
-            i = 1;
-        } else {
             i = 0;
+        } else if (percent > 80) {
+            i = 1;
+        } else if (percent > 50) {
+            i = 2;
+        } else {
+            i = 3;
         }
         lv_img_set_src(img_batt, img_src[i]);
     }
@@ -1771,10 +1771,10 @@ void lv_main_temp_update( const char *temp)
 void lv_main_time_update(const char *time, const char *date)
 {
     lv_label_set_text(main_data.time_label, time);
+    lv_obj_align(main_data.time_label, NULL, LV_ALIGN_CENTER, 0, -80);
     lv_label_set_text(main_data.date_label, date);
+    lv_obj_align(main_data.date_label, main_data.time_label, LV_ALIGN_OUT_BOTTOM_MID, 0, 0);
 }
-
-
 
 void lv_create_ttgo()
 {

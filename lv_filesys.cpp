@@ -136,7 +136,7 @@ int searchMusic(fs::FS &fs, const char *dirname, uint8_t levels)
     while (file) {
         if (!file.isDirectory()) {
             String name = String(file.name());
-            Serial.println(file.name());
+            // Serial.println(file.name());
             if (name.endsWith(".mp3")||name.endsWith(".MP3")) {
                 if (searchFiles++ > 50)return searchFiles;
                 lv_music_list_add(file.name());

@@ -22,15 +22,16 @@ static AudioGeneratorMP3 *mp3 = nullptr;
 static AudioFileSourceSD *file = nullptr;
 static AudioOutputI2S *out = nullptr;
 
+
 static EventGroupHandle_t play_event_group = NULL;
 
 #define PLAY_TASK_BIT   0x01
-
+#define PLAY_TASK_STOP_BIT  0x02
 void play_task(void *param)
 {
     for (;;) {
         EventBits_t bits =  xEventGroupWaitBits(play_event_group,
-                                                PLAY_TASK_BIT,
+                                                PLAY_TASK_BIT|PLAY_TASK_STOP_BIT,
                                                 pdFALSE, pdFALSE, portMAX_DELAY);
         if (bits & PLAY_TASK_BIT) {
             if (mp3->isRunning()) {
@@ -41,7 +42,16 @@ void play_task(void *param)
                 }
             } else {
                 Serial.println("Done..");
+                delay(1000);
             }
+        }
+        if (bits & PLAY_TASK_STOP_BIT) {
+            Serial.println("PLAY_TASK_STOP_BIT");
+            if (mp3->isRunning()) {
+                mp3->stop();
+                Serial.println("STOP MP3 Done");
+            }
+            xEventGroupClearBits(play_event_group,  PLAY_TASK_STOP_BIT );
         }
     }
 }
@@ -55,10 +65,12 @@ void play_handle(void *param)
         if (!start) {
             start = true;
             Serial.printf("LVGL_PLAY_START: %s\n", p->name);
-            file = new AudioFileSourceSD(p->name);
-            id3 = new AudioFileSourceID3(file);
-            out = new AudioOutputI2S(0, 1);
-            mp3 = new AudioGeneratorMP3();
+
+            file->open(p->name);
+            // file = new AudioFileSourceSD(p->name);
+            // id3 = new AudioFileSourceID3(file);
+            // out = new AudioOutputI2S(0, 1);
+            // mp3 = new AudioGeneratorMP3();
             mp3->begin(id3, out);
             xEventGroupSetBits(play_event_group, PLAY_TASK_BIT);
         }
@@ -66,16 +78,20 @@ void play_handle(void *param)
 
     case LVGL_PLAY_STOP:
         if (start) {
-            start = false;
-            Serial.printf("%s\n", p->name);
-            if (mp3->isRunning()) {
-                mp3->stop();
-            }
-            delete file;
-            delete id3;
-            delete out;
-            delete mp3;
+            Serial.println("Recv STOP");
             xEventGroupClearBits(play_event_group,  PLAY_TASK_BIT);
+            xEventGroupSetBits(play_event_group, PLAY_TASK_STOP_BIT);
+            start = false;
+            // Serial.printf("%s\n", p->name);
+            // if (mp3->isRunning()) {
+            //     mp3->stop();
+            //     Serial.println("STOP MP3 Done");
+            // }
+            // delay(200);
+            // delete mp3;
+            // delete out;
+            // delete file;
+            // delete id3;
         }
         break;
     case LVGL_PLAY_PREV:
@@ -83,15 +99,15 @@ void play_handle(void *param)
         if (start) {
             xEventGroupClearBits(play_event_group,  PLAY_TASK_BIT);
             Serial.printf("LVGL_PLAY_PREV: %s\n", p->name);
-            if (mp3->isRunning()) {
-                mp3->stop();
-            }
-            delete file;
-            delete id3;
-            file = new AudioFileSourceSD(p->name);
-            id3 = new AudioFileSourceID3(file);
-            mp3->begin(id3, out);
-            xEventGroupSetBits(play_event_group, PLAY_TASK_BIT);
+            // if (mp3->isRunning()) {
+            //     mp3->stop();
+            // }
+            // delete file;
+            // delete id3;
+            // file = new AudioFileSourceSD(p->name);
+            // id3 = new AudioFileSourceID3(file);
+            // mp3->begin(id3, out);
+            // xEventGroupSetBits(play_event_group, PLAY_TASK_BIT);
         }
         break;
     default:
@@ -107,6 +123,10 @@ void plat_task_init()
 {
 #ifdef LV_PLAY_AUDIO
     play_event_group = xEventGroupCreate();
-    xTaskCreate(play_task, "play", 2048, NULL, 20, NULL);
+    xTaskCreate(play_task, "play", 2048, NULL, 10, NULL);
+    file = new AudioFileSourceSD();
+    id3 = new AudioFileSourceID3(file);
+    out = new AudioOutputI2S(0, 1);
+    mp3 = new AudioGeneratorMP3();
 #endif
 }
