@@ -1,5 +1,3 @@
-
-
 #ifndef __STRUCT_DEF_H
 #define __STRUCT_DEF_H
 #include <Arduino.h>
@@ -7,15 +5,14 @@
 
 // #define ACSIP_S7XG
 #define UBOX_M8N_GPS
-#define LV_PLAY_AUDIO
 
 typedef enum {
-    DIRECTION_TOP_EDGE        = 0,    /* Top edge of the board points towards the ceiling */
-    DIRECTION_BOTTOM_EDGE     = 1,    /* Bottom edge of the board points towards the ceiling */
-    DIRECTION_LEFT_EDGE       = 2,    /* Left edge of the board (USB connector side) points towards the ceiling */
-    DIRECTION_RIGHT_EDGE      = 3,    /* Right edge of the board points towards the ceiling */
-    DIRECTION_DISP_UP         = 4,    /* Display faces up (towards the sky/ceiling) */
-    DIRECTION_DISP_DOWN       = 5     /* Display faces down (towards the ground) */
+    DIRECTION_TOP_EDGE        = 0,   
+    DIRECTION_BOTTOM_EDGE     = 1,   
+    DIRECTION_LEFT_EDGE       = 2,    
+    DIRECTION_RIGHT_EDGE      = 3,   
+    DIRECTION_DISP_UP         = 4,   
+    DIRECTION_DISP_DOWN       = 5   
 } direction_t;
 
 typedef enum {
@@ -28,7 +25,6 @@ typedef enum {
     MESS_EVENT_TIME,
     MESS_EVENT_POWER,
     MESS_EVENT_LORA,
-    MESS_EVENT_PLAY
 } message_type_t;
 
 typedef enum {
@@ -46,7 +42,6 @@ typedef enum {
 
 typedef enum {
     LVGL_FILE_SCAN,
-    LVGL_MUSIC_SCAN,
 } file_event_t;
 
 typedef enum {
@@ -60,7 +55,6 @@ typedef enum {
     LVGL_MOTION_STOP,
     LVGL_MOTION_GET_ACCE,
     LVGL_MOTION_GET_STEP,
-    LVGL_MOTION_GET_TEMP,
 } motion_event_t;
 
 typedef enum {
@@ -100,13 +94,6 @@ typedef struct {
     file_event_t event;
 } file_struct_t;
 
-struct  {
-
-} speaker_struct_t;
-
-typedef struct voltage_struct {
-
-} voltage_struct_t;
 
 typedef struct {
     char ssid[64];
@@ -160,21 +147,6 @@ typedef struct {
 } lora_struct_t;
 
 
-#ifdef LV_PLAY_AUDIO
-typedef enum {
-    LVGL_PLAY_START,
-    LVGL_PLAY_STOP,
-    LVGL_PLAY_NEXT,
-    LVGL_PLAY_PREV,
-    LVGL_PLAY_PAUSE,
-} play_event_t;
-
-typedef struct {
-    play_event_t event;
-    char name[128];
-} play_struct_t;
-#endif
-
 typedef struct {
     union {
         gps_struct_t gps;
@@ -184,9 +156,6 @@ typedef struct {
         file_struct_t file;
         power_struct_t power;
         lora_struct_t lora;
-#ifdef LV_PLAY_AUDIO
-        play_struct_t play;
-#endif
     };
     void *arg;
     message_type_t type;

@@ -33,7 +33,6 @@ extern "C" {
 void lv_main(void);
 void lv_main_time_update(const char *time, const char *date);
 void lv_main_step_counter_update(const char *step);
-void lv_main_temp_update( const char *temp);
 bool lv_main_in();
 
 void gps_anim_close();

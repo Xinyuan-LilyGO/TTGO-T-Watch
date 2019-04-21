@@ -48,23 +48,9 @@ static void touch_timer_reset()
 
 static void ex_disp_flush(int32_t x1, int32_t y1, int32_t x2, int32_t y2, const lv_color_t *color_array)
 {
-#if 1
     uint32_t size = (x2 - x1 + 1) * (y2 - y1 + 1) * 2;
     tft->setAddrWindow(x1, y1, x2, y2);
     tft->pushColors((uint8_t *)color_array, size);
-#else
-    uint16_t c;
-    tft->startWrite(); /* Start new TFT transaction */
-    tft->setAddrWindow(x1, y1, (x2 - x1 + 1), (y2 - y1 + 1)); /* set the working window */
-    for (int y = y1; y <= y2; y++) {
-        for (int x = x1; x <= x2; x++) {
-            c = color_array->full;
-            tft->writeColor(c, 1);
-            color_array++;
-        }
-    }
-    tft->endWrite(); /* terminate TFT transaction */
-#endif
     lv_flush_ready();
 }
 
@@ -106,10 +92,9 @@ void display_init()
 
     pinMode(TP_INT, INPUT);
     Wire.begin(I2C_SDA, I2C_SCL);
-    // Wire.setClock(200000);
     tp = new FT5206_Class();
-    if (! tp->begin(Wire)) {  // pass in 'sensitivity' coefficient
-        Serial.println("Couldn't start FT6206 touchscreen controller");
+    if (! tp->begin(Wire)) {  
+        Serial.println("Couldn't start FT5206 touchscreen controller");
     } else {
         tpInit = true;
         Serial.println("Capacitive touchscreen started");
@@ -136,7 +121,6 @@ void display_init()
             p.x = map(p.x, 0, 320, 0, 240);
             p.y = map(p.y, 0, 320, 0, 240);
             touch_timer_reset();
-            // Serial.printf("x:%d y:%d\n", p.x, p.y);
         }
         /*Set the coordinates (if released use the last pressed coordinates)*/
         data->point.x = p.x;
@@ -160,9 +144,8 @@ void display_init()
 
 void backlight_init(void)
 {
-    ledcAttachPin(TFT_BL, 1); // assign RGB led pins to channels
-    ledcSetup(BACKLIGHT_CHANNEL, 12000, 8);   // 12 kHz PWM, 8-bit resolution
-    // ledcWrite(BACKLIGHT_CHANNEL, 255);
+    ledcAttachPin(TFT_BL, 1);
+    ledcSetup(BACKLIGHT_CHANNEL, 12000, 8);   
 }
 
 

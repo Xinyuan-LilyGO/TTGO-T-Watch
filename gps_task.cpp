@@ -94,9 +94,7 @@ static void gps_task(void *parameters)
             }
             while (hwSerial.available()) {
                 gps->encode(hwSerial.read());
-                // Serial.write(hwSerial.read());
             }
-            // Serial.println();
             delay(200);
         }
     }

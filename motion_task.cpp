@@ -28,8 +28,7 @@ static uint16_t bma423_read_temp(float *temp, uint8_t unit = BMA4_DEG);
 static void bma423_soft_reset();
 
 #define MOTION_GET_DATA_BIT 0X01
-#define MOTION_GET_TEMP_BIT 0X02
-#define MOTION_GET_SETP_BIT 0X04
+#define MOTION_GET_SETP_BIT 0X02
 
 static void motion_task(void *param)
 {
@@ -38,29 +37,21 @@ static void motion_task(void *param)
     char buf[64];
     for (;;) {
         EventBits_t bits =  xEventGroupWaitBits(motionEventGroup,
-                                                MOTION_GET_DATA_BIT | MOTION_GET_TEMP_BIT | MOTION_GET_SETP_BIT,
+                                                MOTION_GET_DATA_BIT  | MOTION_GET_SETP_BIT,
                                                 pdFALSE, pdFALSE, portMAX_DELAY);
         if (bits & MOTION_GET_DATA_BIT) {
             direction_t result;
             if ( bma_get_dir(&result) == BMA4_OK) {
                 motion_dir_update((uint8_t)result);
             }
-        } else if (bits & MOTION_GET_TEMP_BIT) {
-            bma423_read_temp(&temp);
-            snprintf(buf, sizeof(buf), "%.2f", temp);
-            lv_main_temp_update(buf);
-            xEventGroupClearBits(motionEventGroup,  MOTION_GET_TEMP_BIT );
-
-        } else if (bits & MOTION_GET_SETP_BIT) {
+        }else if (bits & MOTION_GET_SETP_BIT) {
             uint16_t int_status = 0;
             uint32_t stepCount;
             uint16_t  rlst;
-            // bma423_read_int_status(&int_status, &bmd4_dev);
             do {
                 rlst = bma423_read_int_status(&int_status, &bmd4_dev);
             } while (rlst != BMA4_OK);
-            Serial.printf("Read MOTION_GET_SETP_BIT[0x%x]\n", int_status);
-
+            // Serial.printf("Read MOTION_GET_SETP_BIT[0x%x]\n", int_status);
             if (int_status & BMA423_STEP_CNTR_INT) {
                 if (bma423_step_counter_output(&stepCount, &bmd4_dev) == BMA4_OK) {
                     snprintf(buf, sizeof(buf), "%u", stepCount);
@@ -68,7 +59,7 @@ static void motion_task(void *param)
                     lv_main_step_counter_update(buf);
                 }
             } else if (int_status & BMA423_WAKEUP_INT) {
-                Serial.printf("BMA423_WAKEUP_INT\n");
+                // Serial.printf("BMA423_WAKEUP_INT\n");
             }
             xEventGroupClearBits(motionEventGroup,  MOTION_GET_SETP_BIT );
         }
@@ -81,23 +72,15 @@ void motion_handle(void *arg)
     switch ((p->event)) {
     case LVGL_MOTION_STOP:
         Serial.println("[BMA] bma423 power off ...");
-        // bma4_set_accel_enable(ACCEL_DISABLE, &bmd4_dev);
-        xEventGroupClearBits(motionEventGroup, MOTION_GET_DATA_BIT | MOTION_GET_TEMP_BIT | MOTION_GET_SETP_BIT);
+        xEventGroupClearBits(motionEventGroup, MOTION_GET_DATA_BIT  | MOTION_GET_SETP_BIT);
         break;
 
     case LVGL_MOTION_GET_ACCE:
-        // Serial.println("[BMA] bma423 get accel ...");
-        // bma423_accel_enable();
         xEventGroupSetBits(motionEventGroup, MOTION_GET_DATA_BIT);
         break;
 
     case LVGL_MOTION_GET_STEP:
-        // Serial.println("[BMA] bma423 get step ...");
         xEventGroupSetBits(motionEventGroup, MOTION_GET_SETP_BIT);
-        break;
-
-    case LVGL_MOTION_GET_TEMP:
-        xEventGroupSetBits(motionEventGroup, MOTION_GET_TEMP_BIT);
         break;
     default:
         break;
@@ -110,12 +93,6 @@ bool motion_task_init()
 
     motionEventGroup = xEventGroupCreate();
 
-    //! configure i2c  触摸已经初始化了，i2c多线程调用将产生冲突
-    // Wire1.begin(SEN_SDA, SEN_SCL);
-    if (!scanI2Cdevice()) {
-        return false;
-    }
-    /* Modify the parameters */
     bmd4_dev.dev_addr        = BMA4_I2C_ADDR_SECONDARY;
     bmd4_dev.interface       = BMA4_I2C_INTERFACE;
     bmd4_dev.bus_read        = _bma423_read;
@@ -127,23 +104,17 @@ bool motion_task_init()
 
     bma423_soft_reset();
 
-    // ! 1. Sensor API initialization for the I2C protocol
-    /* a. Reading the chip id. */
     rslt = bma423_init(&bmd4_dev);
     if (rslt != BMA4_OK) {
         Serial.println("bma4 init fail");
         return false;
     }
-    /* b. Performing initialization sequence.
-        c. Checking the correct status of the initialization sequence.
-    */
-    //! 2. Write configure file
+    
     rslt = bma423_write_config_file(&bmd4_dev);
     if (rslt != BMA4_OK) {
         Serial.println("bma4 write config fail");
         return false;
     }
-    Serial.println("Write config file complete ... ");
 
     configure_interrupt();
 
@@ -172,10 +143,9 @@ static uint16_t configure_interrupt()
 
 #ifdef ENABLE_BMA_INT1
     rslt |= bma423_map_interrupt(BMA4_INTR1_MAP, BMA423_STEP_CNTR_INT | BMA423_WAKEUP_INT, BMA4_ENABLE, &bmd4_dev);
-    Serial.printf("configure_interrupt rslt : %x\n", rslt);
     struct bma4_int_pin_config config ;
     config.edge_ctrl = BMA4_LEVEL_TRIGGER;
-    config.lvl = BMA4_ACTIVE_HIGH;//BMA4_ACTIVE_LOW;
+    config.lvl = BMA4_ACTIVE_HIGH;
     config.od = BMA4_PUSH_PULL;
     config.output_en = BMA4_OUTPUT_ENABLE;
     config.input_en = BMA4_INPUT_DISABLE;
@@ -205,7 +175,6 @@ static uint16_t configure_interrupt()
 #ifdef ENABLE_BMA_INT1
     pinMode(BMA423_INT1, INPUT);
     attachInterrupt(BMA423_INT1, [] {
-        // Serial.println("attachInterrupt");
         BaseType_t xHigherPriorityTaskWoken = pdFALSE;
         task_event_data_t event_data;
         event_data.type = MESS_EVENT_MOTI;
@@ -221,7 +190,6 @@ static uint16_t configure_interrupt()
 #ifdef ENABLE_BMA_INT2
     pinMode(BMA423_INT2, INPUT_PULLUP);
     attachInterrupt(BMA423_INT2, [] {
-        // Serial.println("attachInterrupt");
         BaseType_t xHigherPriorityTaskWoken = pdFALSE;
         task_event_data_t event_data;
         event_data.type = MESS_EVENT_MOTI;
@@ -243,7 +211,6 @@ static uint16_t bma_get_dir(direction_t *result)
     uint16_t absX, absY, absZ;
     rslt = bma4_read_accel_xyz(&accel, &bmd4_dev);
     if (rslt != BMA4_OK) {
-        Serial.println("Read fail");
         return rslt;
     }
     absX = abs(accel.x);
@@ -320,34 +287,6 @@ static uint16_t bma423_accel_enable()
         return rslt;
     }
     return rslt;
-}
-
-static int scanI2Cdevice(void)
-{
-    byte err, addr;
-    int nDevices = 0;
-    for (addr = 1; addr < 127; addr++) {
-        Wire1.beginTransmission(addr);
-        err = Wire1.endTransmission();
-        if (err == 0) {
-            Serial.print("I2C device found at address 0x");
-            if (addr < 16)
-                Serial.print("0");
-            Serial.print(addr, HEX);
-            Serial.println(" !");
-            nDevices++;
-        } else if (err == 4) {
-            Serial.print("Unknow error at address 0x");
-            if (addr < 16)
-                Serial.print("0");
-            Serial.println(addr, HEX);
-        }
-    }
-    if (nDevices == 0)
-        Serial.println("No I2C devices found\n");
-    else
-        Serial.println("done\n");
-    return nDevices;
 }
 
 /*!

@@ -8,11 +8,7 @@
 #include "struct_def.h"
 #include "board_def.h"
 
-#define DEBUG_DECODE(...) Serial.printf( __VA_ARGS__ )
 
-#ifndef DEBUG_DECODER
-#define DEBUG_DECODER(...)
-#endif
 
 
 #if USE_LV_FILESYSTEM
@@ -29,24 +25,8 @@ extern xQueueHandle g_event_queue_handle;
 
 SPIClass SDSPI(HSPI);
 
-
-bool isSDVaild()
-{
-    // if (digitalRead(SD_DETECT)) {
-    //     Serial.println("No Detect SD Card");
-    //     return false;
-    // }
-    return true;
-}
-
-
 bool sd_init()
 {
-    // pinMode(SD_DETECT, INPUT_PULLUP);
-    // if (digitalRead(SD_DETECT)) {
-    //     Serial.println("No Detect SD Card");
-    //     return false;
-    // }
     SDSPI.begin(SD_SCLK, SD_MISO, SD_MOSI, SD_CS);
     if (!f_dev.begin(SD_CS, SDSPI)) {
         Serial.println("Card Mount Failed");
@@ -94,10 +74,7 @@ static void listDir(fs::FS &fs, const char *dirname, uint8_t levels)
     File file = root.openNextFile();
     while (file) {
         if (file.isDirectory()) {
-            // Serial.print("  DIR : ");
-            // Serial.println(file.name());
             lv_file_list_add(file.name(), 1);
-
             if (levels) {
                 listDir(fs, file.name(), levels - 1);
             }
@@ -106,61 +83,19 @@ static void listDir(fs::FS &fs, const char *dirname, uint8_t levels)
             if (++cnt > 50) {
                 return;
             }
-            // Serial.print("  FILE: ");
-            // Serial.print(file.name());
-            // Serial.print("  SIZE: ");
-            // Serial.println(file.size());
         }
         file = root.openNextFile();
     }
 }
 
 
-int searchMusic(fs::FS &fs, const char *dirname, uint8_t levels)
-{
-#ifdef LV_PLAY_AUDIO
-    Serial.println("LVGL_MUSIC_SCAN");
-    int searchFiles = 0;
-    File root = fs.open(dirname);
-    if (!root) {
-        Serial.println("- failed to open directory");
-        lv_music_list_add(NULL);
-        return 0;
-    }
-    if (!root.isDirectory()) {
-        Serial.println(" - not a directory");
-        lv_music_list_add(NULL);
-        return 0;
-    }
-    File file = root.openNextFile();
-    while (file) {
-        if (!file.isDirectory()) {
-            String name = String(file.name());
-            // Serial.println(file.name());
-            if (name.endsWith(".mp3")||name.endsWith(".MP3")) {
-                if (searchFiles++ > 50)return searchFiles;
-                lv_music_list_add(file.name());
-            }
-        }
-        file = root.openNextFile();
-    }
-    if (!searchFiles)
-        lv_music_list_add(NULL);
-    Serial.println("Scan Done");
-    return searchFiles;
-#endif
-}
 
 void file_handle(void *f)
 {
     file_struct_t *file = (file_struct_t *)f;
     switch (file->event) {
     case LVGL_FILE_SCAN:
-        Serial.println("LVGL_FILE_SCAN");
         listDir(f_dev, "/", 2);
-        break;
-    case LVGL_MUSIC_SCAN:
-        searchMusic(f_dev, "/", 2);
         break;
     default:
         break;
@@ -187,7 +122,7 @@ static lv_fs_res_t pcfs_open(void *file_p, const char *fn, lv_fs_mode_t mode)
     /*Make the path relative to the current directory (the projects root folder)*/
     char buf[256];
     sprintf(buf, "/sdcard/%s", fn);
-    DEBUG_DECODE("Open %s \n", buf);
+    Serial.printf("Open %s \n", buf);
     pc_file_t f = fopen(buf, flags);
     if ((long int)f <= 0) return LV_FS_RES_UNKNOWN;
     else {
