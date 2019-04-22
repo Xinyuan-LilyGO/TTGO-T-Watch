@@ -71,3 +71,4 @@ T-Watch is an ESP32-based smart watch hardware designed by Shenzhen Xinyuan Elec
 - [PCF8563_Library](https://github.com/lewisxhe/PCF8563_Library)
 - [BMA423_Library](https://github.com/lewisxhe/BMA423_Library)
 - [S7xG_Library](https://github.com/lewisxhe/S7xG_Library)
+- [Button2](https://github.com/lewisxhe/Button2)
