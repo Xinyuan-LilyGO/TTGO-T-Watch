@@ -16,3 +16,6 @@
 [submodule "libraries/BMA423_Library"]
 	path = libraries/BMA423_Library
 	url = https://github.com/lewisxhe/BMA423_Library.git
+[submodule "libraries/Button2"]
+	path = libraries/Button2
+	url = https://github.com/lewisxhe/Button2.git
