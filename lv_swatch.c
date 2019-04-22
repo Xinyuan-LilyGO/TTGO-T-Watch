@@ -154,7 +154,6 @@ LV_IMG_DECLARE(img_direction_down);
 LV_IMG_DECLARE(img_direction_right);
 LV_IMG_DECLARE(img_direction_left);
 LV_IMG_DECLARE(img_step_conut);
-// LV_IMG_DECLARE(img_temp);
 
 LV_FONT_DECLARE(font_miami);
 LV_FONT_DECLARE(font_miami_32);
@@ -296,13 +295,17 @@ static lv_wifi_struct_t wifi_data[] = {
 };
 
 static lv_menu_struct_t menu_data[]  = {
-    {.name = "LoRa", .callback = lv_lora_setting, .destroy = lv_lora_setting_destroy, .src_img = &img_lora},
-    {.name = "GPS", .callback = lv_gps_setting, .destroy = lv_gps_setting_destroy, .src_img = &img_placeholder},
     {.name = "WiFi", .callback = lv_wifi_setting, .destroy = lv_wifi_setting_destroy, .src_img = &img_wifi},
     {.name = "Power", .callback = lv_power_setting, .destroy = lv_power_setting_destroy, .src_img = &img_power},
     {.name = "Setting", .callback = lv_setting, .destroy = lv_setting_destroy, .src_img = &img_setting},
     {.name = "SD Card", .callback = lv_file_setting, .destroy = lv_file_setting_destroy, .src_img = &img_folder},
     {.name = "Sensor", .callback = lv_motion_setting, .destroy = lv_motion_setting_destroy, .src_img = &img_directions},
+#ifdef UBOX_GPS_MODULE
+    {.name = "GPS", .callback = lv_gps_setting, .destroy = lv_gps_setting_destroy, .src_img = &img_placeholder},
+#endif
+#ifdef ACSIP_S7XG_MODULE
+    {.name = "LoRa", .callback = lv_lora_setting, .destroy = lv_lora_setting_destroy, .src_img = &img_lora},
+#endif
 };
 
 /*********************************************************************
@@ -817,7 +820,6 @@ static void lv_motion_setting_destroy(void)
 static char buffer[1024];
 lv_obj_t *gps_txt;
 
-
 uint8_t lv_gps_static_text_update(void *data)
 {
 #ifdef ESP32
@@ -852,16 +854,7 @@ uint8_t lv_gps_static_text_update(void *data)
     snprintf(buff, sizeof(buff), "%.2f", gps->speed);
     lv_label_set_text(gps_data[6].label, buff);
 #else
-    /*
-        {.name = "lat:"},
-        {.name = "lng:"},
-        {.name = "satellites:"},
-        {.name = "date:"},
-        {.name = "altitude:"},  //meters
-        {.name = "course:"},
-        {.name = "speed:"}      //kmph
-    */
-#if defined(UBOX_M8N_GPS)
+#if defined(UBOX_GPS_MODULE)
     snprintf(buffer, sizeof(buffer), "lat:%.2f\nlng:%.2f\nsatellites:%u\ndate:%u-%u-%u\ntime:%u:%u:%u\naltitude:%.2f/m\nspeed:%.2f/kmph\n",
              gps->lat,
              gps->lng,
@@ -875,7 +868,7 @@ uint8_t lv_gps_static_text_update(void *data)
              gps->altitude,
              gps->speed
             );
-#elif defined(ACSIP_S7XG)
+#elif defined(ACSIP_S7XG_MODULE)
     snprintf(buffer, sizeof(buffer), "lat:%.2f\nlng:%.2f\ndate:%u-%u-%u\ntime:%u:%u:%u\n",
              gps->lat,
              gps->lng,
@@ -1436,7 +1429,13 @@ void create_menu(lv_obj_t *par)
     lv_win_set_style(g_menu_win, LV_WIN_STYLE_BG, &style_txt);
 
     static const lv_point_t vp[] = {
-        {0, 0}, {1, 0}, {2, 0}, {3, 0}, {4, 0}, {5, 0}, {6, 0},
+        {0, 0}, {1, 0}, {2, 0}, {3, 0}, {4, 0},
+#ifdef UBOX_GPS_MODULE
+        {5, 0},
+#endif
+#ifdef ACSIP_S7XG_MODULE
+        {6, 0},
+#endif
         {LV_COORD_MIN, LV_COORD_MIN}
     };
 
@@ -1467,7 +1466,7 @@ void create_menu(lv_obj_t *par)
         lv_img_set_src(img, menu_data[i].src_img);
         lv_obj_align(img, NULL, LV_ALIGN_CENTER, 0, -20);
 
- 
+
         if (prev_obj != cur_obj) {
             prev_obj = cur_obj;
         }

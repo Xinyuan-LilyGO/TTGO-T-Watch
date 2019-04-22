@@ -10,17 +10,6 @@
 #include "freertos/event_groups.h"
 #include "struct_def.h"
 #include "lv_swatch.h"
-#include <s7xg.h>
-
-#define M8N_MOUDLE
-
-#if defined(UBOX_M8N_GPS)
-#ifdef  M8N_MOUDLE
-#define GPS_BANUD_RATE  9600
-#else
-#define GPS_BANUD_RATE  115200
-#endif
-#endif
 
 extern void gps_power_on();
 extern void gps_power_off();
@@ -31,11 +20,12 @@ static HardwareSerial hwSerial(1);
 static EventGroupHandle_t gpsEventGroup = NULL;
 static gps_struct_t gps_data;
 
-#if defined(UBOX_M8N_GPS)
+#if defined(UBOX_GPS_MODULE)
 static TinyGPSPlus *gps = nullptr;
-#elif defined(ACSIP_S7XG)
+#elif defined(ACSIP_S7XG_MODULE)
+#include <s7xg.h>
 S7XG_Class s7xg;
-#define GPS_BANUD_RATE  115200
+#define UART_BANUD_RATE  115200
 #endif
 
 #define BIT0        0x01
@@ -45,7 +35,7 @@ S7XG_Class s7xg;
 
 static uint32_t sec = 0;
 
-#if defined(UBOX_M8N_GPS)
+#if defined(UBOX_GPS_MODULE)
 static void gps_task(void *parameters)
 {
     uint32_t timestamp = 0;
@@ -110,12 +100,12 @@ void gps_handle(void *data)
         //Turn on gps power
         gps_power_on();
         gps_data.event = LVGL_GPS_WAIT_FOR_DATA;
-#ifndef  M8N_MOUDLE
-        hwSerial.printf("@GPPS<1>\r\n");
-        delay(1000);
-        hwSerial.printf("@GSP\r\n");
-        delay(1000);
-#endif
+// #ifndef  M8N_MOUDLE
+//         hwSerial.printf("@GPPS<1>\r\n");
+//         delay(1000);
+//         hwSerial.printf("@GSP\r\n");
+//         delay(1000);
+// #endif
         xEventGroupSetBits(gpsEventGroup, BIT0);
         Serial.println("[GPS] gps power on ...");
         break;
@@ -133,7 +123,7 @@ void gps_handle(void *data)
         break;
     }
 }
-#elif defined(ACSIP_S7XG)
+#elif defined(ACSIP_S7XG_MODULE)
 
 void s7xg_handle( void *param)
 {
@@ -244,7 +234,7 @@ static void s7xg_task(void *parameters)
 
 extern "C" const char *get_s7xg_model()
 {
-#if defined(ACSIP_S7XG)
+#if defined(ACSIP_S7XG_MODULE)
     String model = s7xg.getHardWareModel();
     return model == "" ? "N/A" : model.c_str();
 #else
@@ -254,7 +244,7 @@ extern "C" const char *get_s7xg_model()
 
 extern "C" const char *get_s7xg_ver()
 {
-#if defined(ACSIP_S7XG)
+#if defined(ACSIP_S7XG_MODULE)
     String ver = s7xg.getVersion();
     return  ver == "" ? "N/A" : ver.c_str();
 #else
@@ -264,7 +254,7 @@ extern "C" const char *get_s7xg_ver()
 
 extern "C" const char *get_s7xg_join()
 {
-#if defined(ACSIP_S7XG)
+#if defined(ACSIP_S7XG_MODULE)
 #else
 #endif
     return "unjoined";
@@ -274,13 +264,13 @@ void gps_task_init()
 {
     gpsEventGroup = xEventGroupCreate();
 
-    hwSerial.begin(GPS_BANUD_RATE, SERIAL_8N1, GPS_RX, GPS_TX);
+    hwSerial.begin(UART_BANUD_RATE, SERIAL_8N1, UART_RX, UART_TX);
 
-#if defined(UBOX_M8N_GPS)
+#if defined(UBOX_GPS_MODULE)
     gps = new TinyGPSPlus();
 
     xTaskCreatePinnedToCore(gps_task, "gps", 2048, NULL, 20, NULL, 0);
-#elif defined(ACSIP_S7XG)
+#elif defined(ACSIP_S7XG_MODULE)
 
     s7xg.begin(hwSerial);
 

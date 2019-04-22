@@ -155,7 +155,9 @@ void setup()
 
     motion_task_init();
 
+#if defined(UBOX_GPS_MODULE) || defined(ACSIP_S7XG_MODULE)
     gps_task_init();
+#endif
 
     lv_main();
 
@@ -336,9 +338,6 @@ void time_handle(void *param)
 }
 
 
-
-
-
 void loop()
 {
     task_event_data_t event_data;
@@ -346,9 +345,9 @@ void loop()
         if (xQueueReceive(g_event_queue_handle, &event_data, portMAX_DELAY) == pdPASS) {
             switch (event_data.type) {
             case MESS_EVENT_GPS:
-#if defined(UBOX_M8N_GPS)
+#if defined(UBOX_GPS_MODULE)
                 gps_handle(&event_data.gps);
-#elif defined(ACSIP_S7XG)
+#elif defined(ACSIP_S7XG_MODULE)
                 Serial.println("MESS_EVENT_GPS event");
                 event_data.lora.event = (lora_event_t)event_data.gps.event;
                 s7xg_handle(&event_data.lora);
@@ -374,7 +373,7 @@ void loop()
                 power_handle(&event_data.power);
                 break;
             case MESS_EVENT_LORA:
-#if defined(ACSIP_S7XG)
+#if defined(ACSIP_S7XG_MODULE)
                 s7xg_handle(&event_data.lora);
 #endif
                 break;

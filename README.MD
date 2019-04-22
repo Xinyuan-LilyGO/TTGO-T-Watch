@@ -4,31 +4,30 @@ TTGO T-Watch
 T-Watch is an ESP32-based smart watch hardware designed by Shenzhen Xinyuan Electronics Co., Ltd. Hardware configuration with main core SOC (ESP32), 16MBytes large flash, 8MBytes external SPRAM, integrated multi-channel programmable power management chip ( AXP202), onboard three-axis accelerometer (BMA423), built-in step counter algorithm and other multi-function GSensor, with a variety of different configurations of internal replaceable backplane, such as LORA, GPS, SIM, SD
 
 # PinOut
-| Name         | Pins |
-| ------------ | ---- |
-| TFT CS       | 5    |
-| TFT SCLK     | 18   |
-| TFT MOSI     | 19   |
-| TFT MISO     | -1   |
-| TFT DC       | 27   |
-| TFT RST      | -1   |
-| TFT BL       | 12   |
-| SD CS        | 13   |
-| SD MOSI      | 15   |
-| SD MISO      | 2    |
-| SD SCLK      | 14   |
-| TOUCH SDA    | 23   |
-| TOUCH SCL    | 32   |
-| TOUCH INT    | 38   |
-| SENSOR SDA   | 21   |
-| SENSOR SCL   | 22   |
-| GPS TX       | 33   |
-| GPS RX       | 34   |
-| S7XG GPS RST | -1   |
-| BUTTON       | 36   |
-| RTC INT      | 37   |
-| AXP202 INT   | 35   |
-| BMA423 INT   | 39   |
+| Name        | Pins |
+| ----------- | ---- |
+| TFT CS      | 5    |
+| TFT SCLK    | 18   |
+| TFT MOSI    | 19   |
+| TFT MISO    | -1   |
+| TFT DC      | 27   |
+| TFT RST     | -1   |
+| TFT BL      | 12   |
+| SD CS       | 13   |
+| SD MOSI     | 15   |
+| SD MISO     | 2    |
+| SD SCLK     | 14   |
+| TOUCH SDA   | 23   |
+| TOUCH SCL   | 32   |
+| SENSOR SDA  | 21   |
+| SENSOR SCL  | 22   |
+| UART TX     | 33   |
+| UART RX     | 34   |
+| USER BUTTON | 36   |
+| RTC INT     | 37   |
+| TOUCH INT   | 38   |
+| AXP202 INT  | 35   |
+| BMA423 INT  | 39   |
 
 
 ## Note:
@@ -38,9 +37,10 @@ T-Watch is an ESP32-based smart watch hardware designed by Shenzhen Xinyuan Elec
 - The repository depends on other library files, please recursively clone the repository
     ```
     git clone --recursive https://github.com/lewisxhe/T-Watch
+    git clone --recursive -b lvmaster https://github.com/lewisxhe/T-Watch
     ```
 
-- Then move the library files in the `Submodules` directory to
+- Then move the library files in the `libraries` directory to
     ```
     C:\Users\<UserName>\Documents\Arduino\libraries
     ```

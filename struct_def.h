@@ -2,9 +2,7 @@
 #define __STRUCT_DEF_H
 #include <Arduino.h>
 #include <time.h>
-
-// #define ACSIP_S7XG
-#define UBOX_M8N_GPS
+#include "board_def.h"
 
 typedef enum {
     DIRECTION_TOP_EDGE        = 0,   
