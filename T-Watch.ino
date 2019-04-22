@@ -308,12 +308,14 @@ void power_handle(void *param)
         break;
     }
 }
+#define DEFAULT_BATT_POLL   5
 
 void time_handle(void *param)
 {
     bool rslt;
     char time_buf[64];
     char date_buf[64];
+    uint8_t batteryLoop = 0;
     time_struct_t *p = (time_struct_t *)param;
     switch (p->event) {
         {
@@ -322,6 +324,10 @@ void time_handle(void *param)
                 strftime(time_buf, sizeof(time_buf), "%H:%M", &(p->time));
                 strftime(date_buf, sizeof(date_buf), "%a %d %b ", &(p->time));
                 lv_main_time_update(time_buf, date_buf);
+                if (++batteryLoop >= DEFAULT_BATT_POLL) {
+                    batteryLoop = 0;
+                    lv_update_battery_percent(axp.getBattPercentage());
+                }
             }
             break;
         case LVGL_TIME_ALARM:
