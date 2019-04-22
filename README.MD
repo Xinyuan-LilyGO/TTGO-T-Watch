@@ -47,6 +47,22 @@ T-Watch is an ESP32-based smart watch hardware designed by Shenzhen Xinyuan Elec
 - In the Arduino board select `TTGO T-Watch`, the PSRAM is enabled by default, if it is not turned on, please open it.
 
 
+
+## Low power consumption:
+- In standby mode, the display is off, the current minimum power consumption is about 22.5mA, detailed step reference code to close the screen section
+  
+### The pictures and fonts used in the program are from the network. If there is any infringement, please inform the author.
+
+## Resource
+- [BMA423 Datasheet](https://ae-bst.resource.bosch.com/media/_tech/media/datasheets/BST-BMA423-DS000.pdf)
+- [PCF8563 Datasheet](https://www.nxp.com/docs/en/data-sheet/PCF8563.pdf)
+- [ESP32 Datasheet](https://www.espressif.com/sites/default/files/documentation/esp32_datasheet_en.pdf)
+- [AXP202 Datasheet](http://www.x-powers.com/en.php/Info/support/article_id/30)
+- [LCD Datasheet](http://www.newhavendisplay.com/appnotes/datasheets/LCDs/ST7789V.pdf)
+- [FT5206 Datasheet](https://newhavendisplay.com/app_notes/FT5x06.pdf)
+
+
+##  Using library files
 - [TFT_eSPI](https://github.com/lewisxhe/TFT_eSPI)
 - [TinyGPSPlus](https://github.com/mikalhart/TinyGPSPlus)
 - [lvgl](https://github.com/lewisxhe/lvgl)
@@ -55,10 +71,3 @@ T-Watch is an ESP32-based smart watch hardware designed by Shenzhen Xinyuan Elec
 - [PCF8563_Library](https://github.com/lewisxhe/PCF8563_Library)
 - [BMA423_Library](https://github.com/lewisxhe/BMA423_Library)
 - [S7xG_Library](https://github.com/lewisxhe/S7xG_Library)
-
-
-## Low power consumption:
-- In standby mode, the display is off, the current minimum power consumption is about 2.5mA, detailed step reference code to close the screen section
-  
-### The pictures and fonts used in the program are from the network. If there is any infringement, please inform the author.
-
