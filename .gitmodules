@@ -1,0 +1,18 @@
+[submodule "libraries/TFT_eSPI"]
+	path = libraries/TFT_eSPI
+	url = https://github.com/lewisxhe/TFT_eSPI.git
+[submodule "libraries/TinyGPSPlus"]
+	path = libraries/TinyGPSPlus
+	url = https://github.com/mikalhart/TinyGPSPlus.git
+[submodule "libraries/lvgl"]
+	path = libraries/lvgl
+	url = https://github.com/lewisxhe/lvgl.git
+[submodule "libraries/AXP202X_Library"]
+	path = libraries/AXP202X_Library
+	url = https://github.com/lewisxhe/AXP202X_Library.git
+[submodule "libraries/PCF8563_Library"]
+	path = libraries/PCF8563_Library
+	url = https://github.com/lewisxhe/PCF8563_Library.git
+[submodule "libraries/BMA423_Library"]
+	path = libraries/BMA423_Library
+	url = https://github.com/lewisxhe/BMA423_Library.git
