@@ -102,7 +102,7 @@ const char *get_s7xg_join()
     return "unjoined";
 }
 
-
+#define ENABLE_BLE
 #endif
 
 /*********************
@@ -167,11 +167,10 @@ LV_IMG_DECLARE(img_batt3);
 LV_IMG_DECLARE(img_batt4);
 LV_IMG_DECLARE(img_ttgo);
 LV_IMG_DECLARE(img_lora);
-
+LV_IMG_DECLARE(img_bluetooth);
 
 typedef lv_res_t (*lv_menu_action_t) (lv_obj_t *obj);
 typedef void (*lv_menu_destory_t) (void);
-
 
 typedef struct {
     const char *name;
@@ -245,6 +244,7 @@ static lv_res_t lv_wifi_setting(lv_obj_t *par);
 static lv_res_t lv_motion_setting(lv_obj_t *par);
 static lv_res_t lv_power_setting(lv_obj_t *par);
 static lv_res_t lv_lora_setting(lv_obj_t *par);
+static lv_res_t lv_ble_setting(lv_obj_t *par);
 
 static void lv_gps_setting_destroy();
 static void lv_wifi_setting_destroy();
@@ -254,6 +254,8 @@ static void lv_connect_wifi(const char *password);
 static void lv_power_setting_destroy(void);
 static void  lv_lora_setting_destroy(void);
 static void  lv_setting_destroy(void);
+static void lv_ble_setting_destroy();
+
 
 static lv_res_t lora_Sender(lv_obj_t *obj);
 static lv_res_t lora_Receiver(lv_obj_t *obj);
@@ -306,7 +308,112 @@ static lv_menu_struct_t menu_data[]  = {
 #ifdef ACSIP_S7XG_MODULE
     {.name = "LoRa", .callback = lv_lora_setting, .destroy = lv_lora_setting_destroy, .src_img = &img_lora},
 #endif
+#ifdef ENABLE_BLE
+    {.name = "Bluetooth", .callback = lv_ble_setting, .destroy = lv_ble_setting_destroy, .src_img = &img_bluetooth},
+#endif
 };
+
+/*********************************************************************
+ *
+ *                          BLUETOOTH
+ *
+ * ******************************************************************/
+
+
+static lv_res_t ble_list_action(lv_obj_t *obj)
+{
+
+#ifdef ESP32
+    lv_setWinBtnInvaild(true);
+    task_event_data_t event_data;
+    event_data.type = MESS_EVENT_BLE;
+    event_data.ble.event = LV_BLE_CONNECT;
+    event_data.ble.index = lv_list_get_btn_index(gObjecter,obj);
+    xQueueSend(g_event_queue_handle, &event_data, portMAX_DELAY);
+#else
+    const char *dev = lv_list_get_btn_text(obj);
+    int32_t index = lv_list_get_btn_index(gObjecter,obj);
+    printf("connect device : %s index:%d\n", dev,index);
+#endif
+    return LV_RES_OK;
+}
+
+
+void lv_ble_device_list_add(const char *name)
+{
+    if (!gObjecter) {
+        lv_setWinBtnInvaild(true);
+        if (!name) {
+            lv_obj_t *obj = lv_obj_get_child_back(gContainer, NULL);
+            lv_label_set_text(obj, "No Search Device");
+            lv_obj_align(obj, NULL, LV_ALIGN_CENTER, 0, -10);
+            return;
+        }
+        lv_obj_clean(gContainer);
+        gObjecter = lv_list_create(gContainer, NULL);
+        lv_obj_set_size(gObjecter,  g_menu_view_width, g_menu_view_height);
+        lv_obj_align(gObjecter, gContainer, LV_ALIGN_CENTER, 0, 0);
+        lv_obj_set_style(gObjecter, &lv_style_transp_fit);
+
+    }
+    lv_list_add(gObjecter, SYMBOL_BLUETOOTH, name, ble_list_action);
+    return LV_RES_OK;
+}
+
+static void lv_ble_setting_destroy()
+{
+    lv_obj_del(gContainer);
+    gContainer = NULL;
+    gObjecter = NULL;
+}
+
+static lv_res_t bluetooth_scan_btn_cb(struct _lv_obj_t *obj)
+{
+#ifdef ESP32
+    lv_setWinBtnInvaild(false);
+    task_event_data_t event_data;
+    event_data.type = MESS_EVENT_BLE;
+    event_data.ble.event = LV_BLE_SCAN;
+    xQueueSend(g_event_queue_handle, &event_data, portMAX_DELAY);
+    lv_obj_clean(gContainer);
+    lv_obj_t *label = lv_label_create(gContainer, NULL);
+    lv_label_set_text(label, "Scaning...");
+    lv_obj_align(label, NULL, LV_ALIGN_CENTER, 0, -10);
+#else
+    const char *ssid[] = {"SoilTest0", "SoilTest1"};
+    for (int i = 0; i < 2; i++) {
+        lv_ble_device_list_add(ssid[i]);
+    }
+#endif
+    return LV_RES_OK;
+}
+
+
+static lv_res_t lv_ble_setting(lv_obj_t *par)
+{
+    lv_obj_t *label = NULL;
+    gContainer = lv_obj_create(par, NULL);
+    lv_obj_set_size(gContainer,  g_menu_view_width, g_menu_view_height);
+    lv_obj_set_style(gContainer, &lv_style_transp_fit);
+
+    // for (int i = 0; i < sizeof(wifi_data) / sizeof(wifi_data[0]); ++i) {
+    //     wifi_data[i].label = lv_label_create(gContainer, NULL);
+    //     snprintf(buff, sizeof(buff), "%s:%s", wifi_data[i].name, wifi_data[i].get_val());
+    //     lv_label_set_text(wifi_data[i].label, buff);
+    //     if (!i)
+    //         lv_obj_align(wifi_data[i].label, gContainer, LV_ALIGN_IN_TOP_MID, 0, 0);
+    //     else
+    //         lv_obj_align(wifi_data[i].label, wifi_data[i - 1].label, LV_ALIGN_OUT_BOTTOM_MID, 0, 0);
+    // }
+
+    lv_obj_t *scanbtn = lv_btn_create(gContainer, NULL);
+    lv_obj_align(scanbtn, gContainer, LV_ALIGN_IN_BOTTOM_MID, 0, 0);
+    lv_obj_set_size(scanbtn, 100, 25);
+    label = lv_label_create(scanbtn, NULL);
+    lv_label_set_text(label, "Scan");
+    lv_btn_set_action(scanbtn, LV_BTN_ACTION_PR, bluetooth_scan_btn_cb);
+    return LV_RES_OK;
+}
 
 /*********************************************************************
  *
@@ -1430,6 +1537,9 @@ void create_menu(lv_obj_t *par)
 
     static const lv_point_t vp[] = {
         {0, 0}, {1, 0}, {2, 0}, {3, 0}, {4, 0},
+#ifdef ENABLE_BLE
+        {5, 0},
+#endif
 #ifdef UBOX_GPS_MODULE
         {5, 0},
 #endif

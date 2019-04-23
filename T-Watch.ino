@@ -17,6 +17,7 @@
 #include <SPI.h>
 #include <pcf8563.h>
 #include <soc/rtc.h>
+#include "lv_ble.h"
 
 /*********************
  *      DEFINES
@@ -192,6 +193,7 @@ void setup()
 
     xTaskCreate(time_task, "time", 2048, NULL, 20, NULL);
 
+    ble_init();
 }
 
 
@@ -382,6 +384,9 @@ void loop()
 #if defined(ACSIP_S7XG_MODULE)
                 s7xg_handle(&event_data.lora);
 #endif
+                break;
+            case MESS_EVENT_BLE:
+                ble_handle(&event_data.ble);
                 break;
             default:
                 Serial.println("Error event");

@@ -3,6 +3,7 @@
 #include <Arduino.h>
 #include <time.h>
 #include "board_def.h"
+#define ENABLE_BLE
 
 typedef enum {
     DIRECTION_TOP_EDGE        = 0,   
@@ -23,6 +24,7 @@ typedef enum {
     MESS_EVENT_TIME,
     MESS_EVENT_POWER,
     MESS_EVENT_LORA,
+    MESS_EVENT_BLE,
 } message_type_t;
 
 typedef enum {
@@ -144,6 +146,17 @@ typedef struct {
     void *data;
 } lora_struct_t;
 
+typedef enum {
+    LV_BLE_SCAN,
+    LV_BLE_SCAN_DONE,
+    LV_BLE_CONNECT,
+    LV_BLE_DISCONNECT,
+}ble_event_t;
+
+typedef struct{
+    ble_event_t event;
+    uint8_t index;
+}ble_struct_t;
 
 typedef struct {
     union {
@@ -154,6 +167,7 @@ typedef struct {
         file_struct_t file;
         power_struct_t power;
         lora_struct_t lora;
+        ble_struct_t ble;
     };
     void *arg;
     message_type_t type;
