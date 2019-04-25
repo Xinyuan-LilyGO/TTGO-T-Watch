@@ -53,6 +53,11 @@ void lora_add_message(const char *txt);
 void lv_update_battery_percent(int percent);
 void lv_music_list_add(const char *name);
 void lv_ble_device_list_add(const char *name);
+
+
+void lv_soil_test_create();
+void lv_soil_data_update(float humidity, float temperature, int soil);
+void lv_ble_mbox_event(const char * event_txt);
 /**********************
  *      MACROS
  **********************/

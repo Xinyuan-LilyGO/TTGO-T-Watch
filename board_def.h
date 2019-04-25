@@ -2,8 +2,9 @@
 #ifndef __BOARD_DEF_H
 #define __BOARD_DEF_H
 
-// #define UBOX_GPS_MODULE
+#define UBOX_GPS_MODULE
 // #define ACSIP_S7XG_MODULE
+#define ENABLE_BLE
 
 #define TFT_MISO            4  
 #define TFT_MOSI            19  

@@ -4,6 +4,10 @@
 #include "lv_swatch.h"
 #include "Ticker.h"
 
+
+#define BLE_SEVERICE_TYPE_SOIL  0X01
+#define BLE_SEVERICE_TYPE_RGB   0x02
+
 #define SCAN_MAX_COUNT      10
 #define CTRL_SERVICE_UUID                   "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
 #define CTRL_CHARACTERISTIC_UUID            "beb5483e-36e1-4688-b7f5-ea07361b26a8"
@@ -12,7 +16,7 @@
 
 
 extern QueueHandle_t g_event_queue_handle ;
-
+static BLEClient  *pClient = nullptr;
 static BLEScan *pBLEScan = nullptr;
 static BLERemoteCharacteristic *pRemoteCharacteristic = nullptr;
 static BLERemoteDescriptor *pRemoteSensorDescriptor = nullptr;
@@ -30,11 +34,14 @@ static int devicesCount = 0;
 static void SensorNotifyCallback(BLERemoteCharacteristic *pBLERemoteCharacteristic, uint8_t *pData, size_t length, bool isNotify)
 {
     if (length == 12) {
-        Serial.printf("Humidity:%.2f Temperature:%.2f soil:%d%%\n",
-                      *(float *) & (pData[0]),
-                      * (float *) & (pData[4]),
-                      * (int *) & (pData[8])
-                     );
+
+        lv_soil_data_update(*(float *) & (pData[0]), *(float *) & (pData[4]), *(int *) & (pData[8]));
+
+        // Serial.printf("Humidity:%.2f Temperature:%.2f soil:%d%%\n",
+        //               *(float *) & (pData[0]),
+        //               * (float *) & (pData[4]),
+        //               * (int *) & (pData[8])
+        //              );
     }
 }
 
@@ -47,6 +54,11 @@ class MyClientCallback : public BLEClientCallbacks
     {
         connected = false;
         Serial.println("onDisconnect");
+        task_event_data_t event_data;
+        event_data.type = MESS_EVENT_BLE;
+        event_data.ble.event = LV_BLE_DISCONNECT;
+        xQueueSend(g_event_queue_handle, &event_data, portMAX_DELAY);
+
     }
 };
 
@@ -56,11 +68,12 @@ static bool connectToServer(int index)
     Serial.print("Forming a connection to ");
     // Serial.println(ScanDevices[index].getAddress().toString.c_str());
 
-    BLEClient  *pClient  = BLEDevice::createClient();
+    pClient  = BLEDevice::createClient();
     Serial.println(" - Created client");
 
     pClient->setClientCallbacks(new MyClientCallback());
 
+    Serial.printf("ScanDevices:%p\n", &ScanDevices[index]);
     // Connect to the remove BLE Server.
     pClient->connect(&ScanDevices[index]);  // if you pass BLEAdvertisedDevice instead of address, it will be recognized type of peer device address (public or private)
     Serial.println(" - Connected to server");
@@ -79,7 +92,7 @@ static bool connectToServer(int index)
         pRemoteSensorDescriptor =  pRemoteSensorCharacteristic->getDescriptor(BLEUUID("2902"));
         if (pRemoteSensorDescriptor != nullptr) {
             Serial.print(" - Found our pRemoteSensorDescriptor");
-            // pRemoteSensorDescriptor->writeValue(1);
+            pRemoteSensorDescriptor->writeValue(1);
         }
     }
     // Obtain a reference to the service we are after in the remote BLE server.
@@ -111,6 +124,7 @@ static bool connectToServer(int index)
         }
     }
     connected = true;
+    return true;
 }
 
 /**
@@ -123,7 +137,7 @@ class CustomAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks
       */
     void onResult(BLEAdvertisedDevice advertisedDevice)
     {
-        // Serial.print("BLE Advertised Device found: ");
+        Serial.print("BLE Advertised Device found: ");
         // Serial.println(advertisedDevice.toString().c_str());
         // BLE Testing
         // 3c:71:bf:89:05:fe
@@ -137,13 +151,18 @@ class CustomAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks
         std::string name = advertisedDevice.getName();
         if (name != "" && devicesCount < SCAN_MAX_COUNT) {
             ScanDevices[devicesCount] = advertisedDevice;
-            Serial.printf("[%d] --> %s\n", devicesCount, name.c_str());
+            Serial.printf("[%d] --> %s %p \n", devicesCount, name.c_str(), &ScanDevices[devicesCount]);
             ++devicesCount;
             // lv_ble_device_list_add(name.c_str());
         }
     }
 };
 
+extern "C" void soil_led_control()
+{
+    ledstatus = !ledstatus;
+    pRemoteCharacteristic->writeValue(ledstatus);
+}
 
 void ble_init()
 {
@@ -194,19 +213,29 @@ void ble_handle(void *arg)
                 lv_ble_device_list_add(name.c_str());
             }
             devicesCount = 0;
-        }else
-        {
+        } else {
             lv_ble_device_list_add(NULL);
         }
         break;
+        
     case LV_BLE_CONNECT:
         Serial.printf("Connect %d index device\n", p->index);
         if (p->index >= 0) {
-            connectToServer(p->index);
+            if (connectToServer(p->index)) {
+                lv_soil_test_create();
+            } else {
+                lv_ble_mbox_event("Device is not support");
+            }
         }
         break;
+
+    case LV_BLE_CONNECT_SUCCESS:
+        break;
+
     case LV_BLE_DISCONNECT:
         devicesCount = 0;
+        lv_ble_mbox_event("Device Disconnect");
+        pClient->disconnect();
         break;
     default:
         break;

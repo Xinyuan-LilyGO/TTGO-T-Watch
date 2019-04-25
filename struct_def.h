@@ -3,7 +3,6 @@
 #include <Arduino.h>
 #include <time.h>
 #include "board_def.h"
-#define ENABLE_BLE
 
 typedef enum {
     DIRECTION_TOP_EDGE        = 0,   
@@ -150,6 +149,7 @@ typedef enum {
     LV_BLE_SCAN,
     LV_BLE_SCAN_DONE,
     LV_BLE_CONNECT,
+    LV_BLE_CONNECT_SUCCESS,
     LV_BLE_DISCONNECT,
 }ble_event_t;
 

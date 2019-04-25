@@ -297,6 +297,9 @@ static lv_wifi_struct_t wifi_data[] = {
 };
 
 static lv_menu_struct_t menu_data[]  = {
+#ifdef ENABLE_BLE
+    {.name = "Bluetooth", .callback = lv_ble_setting, .destroy = lv_ble_setting_destroy, .src_img = &img_bluetooth},
+#endif
     {.name = "WiFi", .callback = lv_wifi_setting, .destroy = lv_wifi_setting_destroy, .src_img = &img_wifi},
     {.name = "Power", .callback = lv_power_setting, .destroy = lv_power_setting_destroy, .src_img = &img_power},
     {.name = "Setting", .callback = lv_setting, .destroy = lv_setting_destroy, .src_img = &img_setting},
@@ -308,36 +311,102 @@ static lv_menu_struct_t menu_data[]  = {
 #ifdef ACSIP_S7XG_MODULE
     {.name = "LoRa", .callback = lv_lora_setting, .destroy = lv_lora_setting_destroy, .src_img = &img_lora},
 #endif
-#ifdef ENABLE_BLE
-    {.name = "Bluetooth", .callback = lv_ble_setting, .destroy = lv_ble_setting_destroy, .src_img = &img_bluetooth},
-#endif
 };
+
+
 
 /*********************************************************************
  *
  *                          BLUETOOTH
  *
  * ******************************************************************/
+typedef struct {
+    lv_obj_t *lmeter;
+    lv_obj_t *label;
+} lv_soil_t;
+
+lv_soil_t soil_data[3];
+
+extern void soil_led_control();
+
+void lv_soil_btn_cb(lv_obj_t *obj)
+{
+#ifdef ESP32
+    soil_led_control();
+#endif
+}
+
+void lv_soil_data_update(float humidity, float temperature, int soil)
+{
+    snprintf(buff, sizeof(buff), "%.2f", humidity);
+    lv_label_set_text(soil_data[0].label, buff);
+    lv_lmeter_set_value(soil_data[0].lmeter, (int)humidity);
+
+    snprintf(buff, sizeof(buff), "%.2f", temperature);
+    lv_label_set_text(soil_data[1].label, buff);
+    lv_lmeter_set_value(soil_data[1].lmeter, (int)temperature);
+
+    snprintf(buff, sizeof(buff), "%d%", soil);
+    lv_label_set_text(soil_data[2].label, buff);
+    lv_lmeter_set_value(soil_data[2].lmeter, soil);
+}
+
+
+void lv_soil_test_create()
+{
+    if (gContainer)
+        lv_obj_clean(gContainer);
+
+    /*Create a simple style with ticker line width*/
+    static lv_style_t style_lmeter1;
+    lv_style_copy(&style_lmeter1, &lv_style_pretty_color);
+    style_lmeter1.line.width = 2;
+    style_lmeter1.line.color = LV_COLOR_SILVER;
+    style_lmeter1.body.main_color = LV_COLOR_HEX(0x91bfed);         /*Light blue*/
+    style_lmeter1.body.grad_color = LV_COLOR_HEX(0x04386c);         /*Dark blue*/
+
+    for (int i = 0; i < 3; i++) {
+        soil_data[i].lmeter = lv_lmeter_create(gContainer, NULL);
+        lv_lmeter_set_range(soil_data[i].lmeter, 0, 100);                   /*Set the range*/
+        lv_lmeter_set_value(soil_data[i].lmeter, 30);                       /*Set the current value*/
+        lv_lmeter_set_style(soil_data[i].lmeter, &style_lmeter1);           /*Apply the new style*/
+        lv_obj_set_size(soil_data[i].lmeter, 50, 50);
+
+        soil_data[i].label = lv_label_create(soil_data[i].lmeter, NULL);
+        lv_label_set_text(soil_data[i].label, "N/A");
+        lv_label_set_style(soil_data[i].label, &lv_style_pretty);
+        lv_obj_align(soil_data[i].label, NULL, LV_ALIGN_CENTER, 0, 0);
+
+        if (i == 0)
+            lv_obj_align(soil_data[i].lmeter, NULL, LV_ALIGN_IN_TOP_LEFT, 20, 10);
+        else
+            lv_obj_align(soil_data[i].lmeter, soil_data[i - 1].lmeter, LV_ALIGN_OUT_RIGHT_MID, 20, 0);
+    }
+    lv_obj_t *scanbtn = lv_btn_create(gContainer, NULL);
+    lv_obj_align(scanbtn, gContainer, LV_ALIGN_IN_BOTTOM_MID, 0, 0);
+    lv_obj_set_size(scanbtn, 100, 25);
+    lv_obj_t *label = lv_label_create(scanbtn, NULL);
+    lv_label_set_text(label, "LED");
+    lv_btn_set_action(scanbtn, LV_BTN_ACTION_PR, lv_soil_btn_cb);
+}
 
 
 static lv_res_t ble_list_action(lv_obj_t *obj)
 {
-
 #ifdef ESP32
     lv_setWinBtnInvaild(true);
     task_event_data_t event_data;
     event_data.type = MESS_EVENT_BLE;
     event_data.ble.event = LV_BLE_CONNECT;
-    event_data.ble.index = lv_list_get_btn_index(gObjecter,obj);
+    event_data.ble.index = lv_list_get_btn_index(gObjecter, obj);
     xQueueSend(g_event_queue_handle, &event_data, portMAX_DELAY);
 #else
     const char *dev = lv_list_get_btn_text(obj);
-    int32_t index = lv_list_get_btn_index(gObjecter,obj);
-    printf("connect device : %s index:%d\n", dev,index);
+    int32_t index = lv_list_get_btn_index(gObjecter, obj);
+    printf("connect device : %s index:%d\n", dev, index);
 #endif
     return LV_RES_OK;
 }
-
 
 void lv_ble_device_list_add(const char *name)
 {
@@ -360,6 +429,55 @@ void lv_ble_device_list_add(const char *name)
     return LV_RES_OK;
 }
 
+static lv_res_t lv_mbox_btn_callback(lv_obj_t *obj, const char *txt)
+{
+    lv_mbox_start_auto_close(lv_obj_get_parent(obj), 0);
+}
+
+void lv_ble_mbox_event(const char * event_txt)
+{
+    if (gContainer)
+        lv_obj_clean(gContainer);
+    /*Create a new background style*/
+    static lv_style_t style_bg;
+    lv_style_copy(&style_bg, &lv_style_pretty);
+    style_bg.body.main_color = LV_COLOR_MAKE(0xf5, 0x45, 0x2e);
+    style_bg.body.grad_color = LV_COLOR_MAKE(0xb9, 0x1d, 0x09);
+    style_bg.body.border.color = LV_COLOR_MAKE(0x3f, 0x0a, 0x03);
+    style_bg.text.color = LV_COLOR_WHITE;
+    style_bg.body.padding.hor = 12;
+    style_bg.body.padding.ver = 8;
+    style_bg.body.shadow.width = 8;
+
+    /*Create released and pressed button styles*/
+    static lv_style_t style_btn_rel;
+    static lv_style_t style_btn_pr;
+    lv_style_copy(&style_btn_rel, &lv_style_btn_rel);
+    style_btn_rel.body.empty = 1;                    /*Draw only the border*/
+    style_btn_rel.body.border.color = LV_COLOR_WHITE;
+    style_btn_rel.body.border.width = 2;
+    style_btn_rel.body.border.opa = LV_OPA_70;
+    style_btn_rel.body.padding.hor = 12;
+    style_btn_rel.body.padding.ver = 8;
+
+    lv_style_copy(&style_btn_pr, &style_btn_rel);
+    style_btn_pr.body.empty = 0;
+    style_btn_pr.body.main_color = LV_COLOR_MAKE(0x5d, 0x0f, 0x04);
+    style_btn_pr.body.grad_color = LV_COLOR_MAKE(0x5d, 0x0f, 0x04);
+
+    lv_obj_t *mbox1 = lv_mbox_create(gContainer, NULL);
+    lv_mbox_set_text(mbox1, event_txt);                    /*Set the text*/
+    static const char *btns[] = {"\221Apply", ""}; /*Button description. '\221' lv_btnm like control char*/
+    lv_mbox_add_btns(mbox1, btns, NULL);
+    lv_obj_set_width(mbox1, 180);
+    lv_obj_align(mbox1, NULL, LV_ALIGN_IN_TOP_LEFT, 10, 10); /*Align to the corner*/
+    lv_mbox_set_style(mbox1, LV_MBOX_STYLE_BG, &style_bg);
+    lv_mbox_set_style(mbox1, LV_MBOX_STYLE_BTN_REL, &style_btn_rel);
+    lv_mbox_set_style(mbox1, LV_MBOX_STYLE_BTN_PR, &style_btn_pr);
+    lv_mbox_set_action(mbox1, lv_mbox_btn_callback);
+}
+
+
 static void lv_ble_setting_destroy()
 {
     lv_obj_del(gContainer);
@@ -367,7 +485,7 @@ static void lv_ble_setting_destroy()
     gObjecter = NULL;
 }
 
-static lv_res_t bluetooth_scan_btn_cb(struct _lv_obj_t *obj)
+static lv_res_t bluetooth_scan_btn_cb( lv_obj_t *obj)
 {
 #ifdef ESP32
     lv_setWinBtnInvaild(false);
@@ -396,6 +514,7 @@ static lv_res_t lv_ble_setting(lv_obj_t *par)
     lv_obj_set_size(gContainer,  g_menu_view_width, g_menu_view_height);
     lv_obj_set_style(gContainer, &lv_style_transp_fit);
 
+    // lv_soil_test_create();return;
     // for (int i = 0; i < sizeof(wifi_data) / sizeof(wifi_data[0]); ++i) {
     //     wifi_data[i].label = lv_label_create(gContainer, NULL);
     //     snprintf(buff, sizeof(buff), "%s:%s", wifi_data[i].name, wifi_data[i].get_val());
@@ -1625,6 +1744,10 @@ void lv_create_ttgo()
 
 void lv_main(void)
 {
+
+    // lv_ble_disconnect();
+    // return;
+
     g_menu_in = true;
 
     lv_theme_set_current(lv_theme_material_init(100, NULL));
