@@ -29,7 +29,7 @@ bool sd_init()
 {
     SDSPI.begin(SD_SCLK, SD_MISO, SD_MOSI, SD_CS);
     if (!f_dev.begin(SD_CS, SDSPI)) {
-        Serial.println("Card Mount Failed");
+        Serial.println("\nSD Card Mount Failed");
         return false;
     }
 
@@ -199,7 +199,6 @@ static lv_fs_res_t pcfs_tell(void *file_p, uint32_t *pos_p)
 bool lv_filesystem_init()
 {
     if (!sd_init()) {
-        Serial.println("begin sd fail");
         return false;
     }
 

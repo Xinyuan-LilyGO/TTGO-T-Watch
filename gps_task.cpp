@@ -38,19 +38,19 @@ static uint32_t sec = 0;
 #if defined(UBOX_GPS_MODULE)
 static void gps_task(void *parameters)
 {
-    uint32_t timestamp = 0;
-    uint32_t teststamp = 0;
+    uint64_t timestamp = 0;
+    uint64_t teststamp = 0;
     while (1) {
         if (xEventGroupWaitBits(gpsEventGroup, BIT0, pdFALSE, pdTRUE, portMAX_DELAY) == BIT0) {
             switch (gps_data.event) {
             case LVGL_GPS_WAIT_FOR_DATA:
                 if (millis() - teststamp  >  UPDATE_TIME) {
                     teststamp = millis();
-                    Serial.printf("[GPS] Get GPS Data ( %lu )\n", ++sec);
+                    Serial.printf("[GPS] Positioning ( %lu )  \n", ++sec);
                 }
                 if (gps->location.isValid()) {
                     gps_data.event = LVGL_GPS_DATA_READY;
-                    Serial.println("[GPS] GPS Data isValid ***");
+                    Serial.println("[GPS] Positioning SUCCESS ***");
                     gps_anim_close();
                     gps_create_static_text();
                 }
@@ -62,7 +62,7 @@ static void gps_task(void *parameters)
                 // }
                 if (millis() - timestamp  >  UPDATE_TIME) {
                     timestamp = millis();
-                    Serial.println("[GPS] update gps info ...");
+                    Serial.println("[GPS] update gps info ***");
                     gps_data.lng = gps->location.lng();
                     gps_data.lat = gps->location.lat();
                     gps_data.speed = gps->speed.kmph();
@@ -82,9 +82,17 @@ static void gps_task(void *parameters)
             default:
                 break;
             }
+
             while (hwSerial.available()) {
                 gps->encode(hwSerial.read());
+                // Serial.write(hwSerial.read());
             }
+
+            // if (millis() > 5000 && gps->charsProcessed() < 10) {
+            //     Serial.println(F("No GPS detected: check wiring."));
+            //     while (true);
+            // }
+
             delay(200);
         }
     }

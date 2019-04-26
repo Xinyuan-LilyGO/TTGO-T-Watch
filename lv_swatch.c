@@ -434,7 +434,7 @@ static lv_res_t lv_mbox_btn_callback(lv_obj_t *obj, const char *txt)
     lv_mbox_start_auto_close(lv_obj_get_parent(obj), 0);
 }
 
-void lv_ble_mbox_event(const char * event_txt)
+void lv_ble_mbox_event(const char *event_txt)
 {
     if (gContainer)
         lv_obj_clean(gContainer);
@@ -480,6 +480,10 @@ void lv_ble_mbox_event(const char * event_txt)
 
 static void lv_ble_setting_destroy()
 {
+    task_event_data_t event_data;
+    event_data.type = MESS_EVENT_BLE;
+    event_data.ble.event = LV_BLE_DISCONNECT;
+    xQueueSend(g_event_queue_handle, &event_data, portMAX_DELAY);
     lv_obj_del(gContainer);
     gContainer = NULL;
     gObjecter = NULL;
@@ -1660,10 +1664,10 @@ void create_menu(lv_obj_t *par)
         {5, 0},
 #endif
 #ifdef UBOX_GPS_MODULE
-        {5, 0},
+        {6, 0},
 #endif
 #ifdef ACSIP_S7XG_MODULE
-        {6, 0},
+        {7, 0},
 #endif
         {LV_COORD_MIN, LV_COORD_MIN}
     };
