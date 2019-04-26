@@ -194,6 +194,8 @@ void setup()
     xTaskCreate(time_task, "time", 2048, NULL, 20, NULL);
 
     ble_init();
+
+    xEventGroupSetBits(g_sync_event_group, BIT0);
 }
 
 
@@ -278,16 +280,23 @@ void power_handle(void *param)
         }
         if (axp.isPEKShortPressIRQ()) {
             if (isBacklightOn()) {
+                // lv_task_enable(false);
                 backlight_off();
                 display_sleep();
                 axp.setPowerOutPut(AXP202_LDO2, AXP202_OFF);
-                rtc_clk_cpu_freq_set(RTC_CPU_FREQ_80M);
+                bma423_disable_interrupt();
+                xEventGroupClearBits(g_sync_event_group, BIT0);
+                rtc_clk_cpu_freq_set(RTC_CPU_FREQ_2M);
             } else {
                 rtc_clk_cpu_freq_set(RTC_CPU_FREQ_240M);
+                // lv_task_enable(true);
+                bma423_enable_interrupt();
                 axp.setPowerOutPut(AXP202_LDO2, AXP202_ON);
                 backlight_on();
                 display_wakeup();
                 touch_timer_create();
+                syncSystemTimeByRtc();
+                xEventGroupSetBits(g_sync_event_group, BIT0);
             }
         }
         axp.clearIRQ();
@@ -399,14 +408,18 @@ void loop()
 static void time_task(void *param)
 {
     struct tm time;
-    uint8_t prev_min = 0;
     task_event_data_t event_data;
     for (;;) {
-        if (getLocalTime(&time)) {
-            event_data.type = MESS_EVENT_TIME;
-            event_data.time.event = LVGL_TIME_UPDATE;
-            event_data.time.time = time;
-            xQueueSend(g_event_queue_handle, &event_data, portMAX_DELAY);
+        EventBits_t bits =  xEventGroupWaitBits(g_sync_event_group,
+                                                BIT0,
+                                                pdFALSE, pdFALSE, portMAX_DELAY);
+        if (bits & BIT0) {
+            if (getLocalTime(&time)) {
+                event_data.type = MESS_EVENT_TIME;
+                event_data.time.event = LVGL_TIME_UPDATE;
+                event_data.time.time = time;
+                xQueueSend(g_event_queue_handle, &event_data, portMAX_DELAY);
+            }
         }
         delay(1000);
     }

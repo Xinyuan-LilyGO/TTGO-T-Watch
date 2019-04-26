@@ -44,7 +44,7 @@ static void motion_task(void *param)
             if ( bma_get_dir(&result) == BMA4_OK) {
                 motion_dir_update((uint8_t)result);
             }
-        }else if (bits & MOTION_GET_SETP_BIT) {
+        } else if (bits & MOTION_GET_SETP_BIT) {
             uint16_t int_status = 0;
             uint32_t stepCount;
             uint16_t  rlst;
@@ -109,7 +109,7 @@ bool motion_task_init()
         Serial.println("bma4 init fail");
         return false;
     }
-    
+
     rslt = bma423_write_config_file(&bmd4_dev);
     if (rslt != BMA4_OK) {
         Serial.println("bma4 write config fail");
@@ -288,6 +288,22 @@ static uint16_t bma423_accel_enable()
     }
     return rslt;
 }
+
+
+void bma423_disable_interrupt()
+{
+    uint16_t rslt = BMA4_OK;
+    rslt = bma423_map_interrupt(BMA4_INTR1_MAP, BMA423_STEP_CNTR_INT | BMA423_WAKEUP_INT, BMA4_DISABLE, &bmd4_dev);
+    Serial.printf("bma423_disable:%x\n", rslt);
+}
+
+void bma423_enable_interrupt()
+{
+    uint16_t rslt = BMA4_OK;
+    rslt = bma423_map_interrupt(BMA4_INTR1_MAP, BMA423_STEP_CNTR_INT | BMA423_WAKEUP_INT, BMA4_ENABLE, &bmd4_dev);
+    Serial.printf("bma423_disable:%x\n", rslt);
+}
+
 
 /*!
  * @brief Bus communication function pointer which should be mapped to
