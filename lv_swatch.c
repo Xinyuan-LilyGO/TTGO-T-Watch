@@ -102,7 +102,7 @@ const char *get_s7xg_join()
     return "unjoined";
 }
 
-#define ENABLE_BLE
+// #define ENABLE_BLE
 #endif
 
 /*********************
@@ -300,17 +300,19 @@ static lv_menu_struct_t menu_data[]  = {
 #ifdef ENABLE_BLE
     {.name = "Bluetooth", .callback = lv_ble_setting, .destroy = lv_ble_setting_destroy, .src_img = &img_bluetooth},
 #endif
+
+#if defined(ACSIP_S7XG_MODULE) && !defined(UBOX_GPS_MODULE)
+    {.name = "GPS", .callback = lv_gps_setting, .destroy = lv_gps_setting_destroy, .src_img = &img_placeholder},
+    {.name = "LoRa", .callback = lv_lora_setting, .destroy = lv_lora_setting_destroy, .src_img = &img_lora},
+#elif defined(UBOX_GPS_MODULE)
+    {.name = "GPS", .callback = lv_gps_setting, .destroy = lv_gps_setting_destroy, .src_img = &img_placeholder},
+#endif
+
     {.name = "WiFi", .callback = lv_wifi_setting, .destroy = lv_wifi_setting_destroy, .src_img = &img_wifi},
     {.name = "Power", .callback = lv_power_setting, .destroy = lv_power_setting_destroy, .src_img = &img_power},
     {.name = "Setting", .callback = lv_setting, .destroy = lv_setting_destroy, .src_img = &img_setting},
     {.name = "SD Card", .callback = lv_file_setting, .destroy = lv_file_setting_destroy, .src_img = &img_folder},
     {.name = "Sensor", .callback = lv_motion_setting, .destroy = lv_motion_setting_destroy, .src_img = &img_directions},
-#ifdef UBOX_GPS_MODULE
-    {.name = "GPS", .callback = lv_gps_setting, .destroy = lv_gps_setting_destroy, .src_img = &img_placeholder},
-#endif
-#ifdef ACSIP_S7XG_MODULE
-    {.name = "LoRa", .callback = lv_lora_setting, .destroy = lv_lora_setting_destroy, .src_img = &img_lora},
-#endif
 };
 
 
@@ -326,6 +328,7 @@ typedef struct {
 } lv_soil_t;
 
 lv_soil_t soil_data[3];
+static bool connect = false;
 
 extern void soil_led_control();
 
@@ -338,6 +341,7 @@ void lv_soil_btn_cb(lv_obj_t *obj)
 
 void lv_soil_data_update(float humidity, float temperature, int soil)
 {
+    if (!connect)return;
     snprintf(buff, sizeof(buff), "%.2f", humidity);
     lv_label_set_text(soil_data[0].label, buff);
     lv_lmeter_set_value(soil_data[0].lmeter, (int)humidity);
@@ -388,6 +392,7 @@ void lv_soil_test_create()
     lv_obj_t *label = lv_label_create(scanbtn, NULL);
     lv_label_set_text(label, "LED");
     lv_btn_set_action(scanbtn, LV_BTN_ACTION_PR, lv_soil_btn_cb);
+    connect = true;
 }
 
 
@@ -436,8 +441,10 @@ static lv_res_t lv_mbox_btn_callback(lv_obj_t *obj, const char *txt)
 
 void lv_ble_mbox_event(const char *event_txt)
 {
-    if (gContainer)
-        lv_obj_clean(gContainer);
+    printf("lv_ble_mbox_event : %s\n", event_txt);
+    if (!gContainer)return;
+    connect = false;
+    lv_obj_clean(gContainer);
     /*Create a new background style*/
     static lv_style_t style_bg;
     lv_style_copy(&style_bg, &lv_style_pretty);
@@ -477,9 +484,9 @@ void lv_ble_mbox_event(const char *event_txt)
     lv_mbox_set_action(mbox1, lv_mbox_btn_callback);
 }
 
-
 static void lv_ble_setting_destroy()
 {
+    connect = false;
     task_event_data_t event_data;
     event_data.type = MESS_EVENT_BLE;
     event_data.ble.event = LV_BLE_DISCONNECT;
@@ -1658,16 +1665,39 @@ void create_menu(lv_obj_t *par)
     lv_win_set_style(g_menu_win, LV_WIN_STYLE_HEADER, &style_txt);
     lv_win_set_style(g_menu_win, LV_WIN_STYLE_BG, &style_txt);
 
-    static const lv_point_t vp[] = {
-        {0, 0}, {1, 0}, {2, 0}, {3, 0}, {4, 0},
-#ifdef ENABLE_BLE
-        {5, 0},
-#endif
+
+
 #ifdef UBOX_GPS_MODULE
-        {6, 0},
+#define GPS_EN  1
+#else
+#define GPS_EN   0
 #endif
+
 #ifdef ACSIP_S7XG_MODULE
-        {7, 0},
+#define S7XG_EN  1
+#else
+#define S7XG_EN   0
+#endif
+
+#ifdef ENABLE_BLE
+#define BLE_EN  1
+#else
+#define BLE_EN   0
+#endif
+
+    static const lv_point_t vp[] = {
+#if     ((BLE_EN) && ((!GPS_EN) && (!S7XG_EN)))
+        {0, 0}, {1, 0}, {2, 0}, {3, 0}, {4, 0}, {5, 0},
+#elif   ((BLE_EN) && (GPS_EN))
+        {0, 0}, {1, 0}, {2, 0}, {3, 0}, {4, 0}, {5, 0}, {6, 0},
+#elif   ((BLE_EN) && (S7XG_EN))
+        {0, 0}, {1, 0}, {2, 0}, {3, 0}, {4, 0}, {5, 0}, {6, 0}, {7, 0},
+#elif   (S7XG_EN)
+        {0, 0}, {1, 0}, {2, 0}, {3, 0}, {4, 0}, {5, 0}, {6, 0},
+#elif  (GPS_EN)
+        {0, 0}, {1, 0}, {2, 0}, {3, 0}, {4, 0}, {5, 0},
+#else
+        {0, 0}, {1, 0}, {2, 0}, {3, 0}, {4, 0},
 #endif
         {LV_COORD_MIN, LV_COORD_MIN}
     };
@@ -1748,10 +1778,6 @@ void lv_create_ttgo()
 
 void lv_main(void)
 {
-
-    // lv_ble_disconnect();
-    // return;
-
     g_menu_in = true;
 
     lv_theme_set_current(lv_theme_material_init(100, NULL));

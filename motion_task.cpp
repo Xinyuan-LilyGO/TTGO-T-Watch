@@ -315,7 +315,7 @@ static uint16_t _bma423_read(uint8_t dev_addr, uint8_t reg_addr, uint8_t *read_d
     Wire1.beginTransmission(dev_addr);
     Wire1.write(reg_addr);
     Wire1.endTransmission(false);
-    uint8_t cnt = Wire1.requestFrom(dev_addr, (uint8_t)len, 1);
+    uint8_t cnt = Wire1.requestFrom(dev_addr, (uint8_t)len, (uint8_t)1);
     if (!cnt) {
         ret =  1 << 13;
     }

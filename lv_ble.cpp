@@ -214,7 +214,6 @@ void ble_handle(void *arg)
                 std::string name = ScanDevices[i].getName();
                 lv_ble_device_list_add(name.c_str());
             }
-            devicesCount = 0;
         } else {
             lv_ble_device_list_add(NULL);
         }
@@ -235,13 +234,17 @@ void ble_handle(void *arg)
 
     case LV_BLE_DISCONNECT:
         Serial.println("LV_BLE_DISCONNECT");
-        devicesCount = 0;
-        if (connected) {
-            pRemoteSensorDescriptor->writeValue(0);
-            pClient->disconnect();
-            connected = false;
-        } else {
-            lv_ble_mbox_event("Device Disconnect");
+        if (devicesCount) {
+            devicesCount = 0;
+            if (connected) {
+                Serial.println("pClient->disconnect()...");
+                pRemoteSensorDescriptor->writeValue(0);
+                connected = false;
+                pClient->disconnect();
+            } else {
+                Serial.println("lv_ble_mbox_event...");
+                lv_ble_mbox_event("Device Disconnect");
+            }
         }
         break;
     default:

@@ -286,6 +286,7 @@ void power_handle(void *param)
                 axp.setPowerOutPut(AXP202_LDO2, AXP202_OFF);
                 bma423_disable_interrupt();
                 xEventGroupClearBits(g_sync_event_group, BIT0);
+                // rtc_clk_cpu_freq_set(RTC_CPU_FREQ_80M);
                 rtc_clk_cpu_freq_set(RTC_CPU_FREQ_2M);
             } else {
                 rtc_clk_cpu_freq_set(RTC_CPU_FREQ_240M);
