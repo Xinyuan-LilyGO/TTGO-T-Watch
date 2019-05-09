@@ -47,8 +47,7 @@ T-Watch is an ESP32-based smart watch hardware designed by Shenzhen Xinyuan Elec
   
 - The repository depends on other library files, please recursively clone the repository
     ```
-    git clone --recursive https://github.com/lewisxhe/T-Watch
-    git clone --recursive -b lvmaster https://github.com/lewisxhe/T-Watch
+    git clone --recursive https://github.com/Xinyuan-LilyGO/TTGO-T-Watch
     ```
 
 - Then move the library files in the `libraries` directory to
