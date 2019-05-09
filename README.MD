@@ -39,7 +39,7 @@ T-Watch is an ESP32-based smart watch hardware designed by Shenzhen Xinyuan Elec
     // #define ENABLE_BLE           //Turning on will open the BLE module
     ```
 
-- BLE only supports the corresponding UUID of the connection, and will not be able to connect to the UUID that is not in the program.
+- BLE only supports the corresponding UUID of the connection and cannot connect to the UUID that does not exist in the program. BLE server reference code [Soil-BLE-Server](https://github.com/lewisxhe/simple-ble)
   
 - WIFI connection is only used as time synchronization
 
