@@ -2,9 +2,9 @@
 #ifndef __BOARD_DEF_H
 #define __BOARD_DEF_H
 
-// #define UBOX_GPS_MODULE
-#define ACSIP_S7XG_MODULE
-#define ENABLE_BLE
+// #define UBOX_GPS_MODULE      //Turning on will open the M8/M6 GPS module
+// #define ACSIP_S7XG_MODULE    //Turning on will open the S7XG GPS/LORA module
+// #define ENABLE_BLE           //Turning on will open the BLE module
 
 #define TFT_MISO            4  
 #define TFT_MOSI            19  
@@ -18,7 +18,6 @@
 #define SD_MISO             2
 #define SD_MOSI             15
 #define SD_SCLK             14
-#define SD_DETECT           4
 
 #define I2C_SDA             23
 #define I2C_SCL             32

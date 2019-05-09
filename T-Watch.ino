@@ -193,7 +193,9 @@ void setup()
 
     xTaskCreate(time_task, "time", 2048, NULL, 20, NULL);
 
+#ifdef ENABLE_BLE
     ble_init();
+#endif
 
     xEventGroupSetBits(g_sync_event_group, BIT0);
 }
@@ -396,7 +398,9 @@ void loop()
 #endif
                 break;
             case MESS_EVENT_BLE:
+#ifdef ENABLE_BLE
                 ble_handle(&event_data.ble);
+#endif
                 break;
             default:
                 Serial.println("Error event");
