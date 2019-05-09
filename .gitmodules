@@ -19,3 +19,6 @@
 [submodule "libraries/Button2"]
 	path = libraries/Button2
 	url = https://github.com/lewisxhe/Button2.git
+[submodule "libraries/S7xG_Library"]
+	path = libraries/S7xG_Library
+	url = https://github.com/lewisxhe/S7xG_Library.git
