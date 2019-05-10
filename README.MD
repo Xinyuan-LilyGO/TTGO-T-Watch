@@ -30,6 +30,13 @@ T-Watch is an ESP32-based smart watch hardware designed by Shenzhen Xinyuan Elec
 | AXP202 INT  | 35   |
 | BMA423 INT  | 39   |
 
+##  Button description:
+**PEK KEY**: facing the screen, right upper right
+- (on state) -> long press for four seconds to shut down
+- (off state) -> long press for three seconds to boot
+
+**USER KEY** : Close to the Type-C interface
+- (on state) -> long press for two seconds to release, deep sleep
 
 ## Note:
 - The default program does not open any sub-modules. If you need to use other modules, enable the corresponding module in `board_def.h` to enable
