@@ -25,16 +25,30 @@ extern xQueueHandle g_event_queue_handle;
 
 SPIClass SDSPI(HSPI);
 
+
+bool sd_detect()
+{
+    if (digitalRead(4)) {
+        Serial.println("SD no detected");
+        return false;
+    } else {
+        Serial.println("SD detected");
+    }
+    return true;
+}
+
 bool sd_init()
 {
+    pinMode(4, INPUT_PULLUP);
+    if (!sd_detect()) {
+        return false;
+    }
     SDSPI.begin(SD_SCLK, SD_MISO, SD_MOSI, SD_CS);
     if (!f_dev.begin(SD_CS, SDSPI)) {
         Serial.println("\nSD Card Mount Failed");
         return false;
     }
-
     uint8_t cardType = f_dev.cardType();
-
     if (cardType == CARD_NONE) {
         Serial.println("No SD_MMC card attached");
         return false;
@@ -58,6 +72,9 @@ bool sd_init()
 
 static void listDir(fs::FS &fs, const char *dirname, uint8_t levels)
 {
+    if (!sd_detect()) {
+        return ;
+    }
     uint8_t cnt = 0;
     File root = fs.open(dirname);
     if (!root) {
@@ -70,19 +87,16 @@ static void listDir(fs::FS &fs, const char *dirname, uint8_t levels)
         lv_file_list_add(NULL, 0);
         return;
     }
-
     File file = root.openNextFile();
     while (file) {
+        if (cnt > 20) {
+            return;
+        }
+        ++cnt;
         if (file.isDirectory()) {
             lv_file_list_add(file.name(), 1);
-            if (levels) {
-                listDir(fs, file.name(), levels - 1);
-            }
         } else {
             lv_file_list_add(file.name(), 0);
-            if (++cnt > 50) {
-                return;
-            }
         }
         file = root.openNextFile();
     }

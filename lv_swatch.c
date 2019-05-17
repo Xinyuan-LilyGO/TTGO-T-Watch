@@ -168,6 +168,9 @@ LV_IMG_DECLARE(img_batt4);
 LV_IMG_DECLARE(img_ttgo);
 LV_IMG_DECLARE(img_lora);
 LV_IMG_DECLARE(img_bluetooth);
+LV_IMG_DECLARE(img_alipay);
+LV_IMG_DECLARE(img_wechatpay);
+LV_IMG_DECLARE(img_qr);
 
 typedef lv_res_t (*lv_menu_action_t) (lv_obj_t *obj);
 typedef void (*lv_menu_destory_t) (void);
@@ -245,6 +248,8 @@ static lv_res_t lv_motion_setting(lv_obj_t *par);
 static lv_res_t lv_power_setting(lv_obj_t *par);
 static lv_res_t lv_lora_setting(lv_obj_t *par);
 static lv_res_t lv_ble_setting(lv_obj_t *par);
+static lv_res_t lv_pay(lv_obj_t *par);
+
 
 static void lv_gps_setting_destroy();
 static void lv_wifi_setting_destroy();
@@ -252,10 +257,10 @@ static void lv_file_setting_destroy();
 static void lv_motion_setting_destroy();
 static void lv_connect_wifi(const char *password);
 static void lv_power_setting_destroy(void);
-static void  lv_lora_setting_destroy(void);
-static void  lv_setting_destroy(void);
+static void lv_lora_setting_destroy(void);
+static void lv_setting_destroy(void);
 static void lv_ble_setting_destroy();
-
+static void lv_pay_destroy();
 
 static lv_res_t lora_Sender(lv_obj_t *obj);
 static lv_res_t lora_Receiver(lv_obj_t *obj);
@@ -313,9 +318,35 @@ static lv_menu_struct_t menu_data[]  = {
     {.name = "Setting", .callback = lv_setting, .destroy = lv_setting_destroy, .src_img = &img_setting},
     {.name = "SD Card", .callback = lv_file_setting, .destroy = lv_file_setting_destroy, .src_img = &img_folder},
     {.name = "Sensor", .callback = lv_motion_setting, .destroy = lv_motion_setting_destroy, .src_img = &img_directions},
+
+    //pay
+    {.name = "WechatPay", .callback = lv_pay, .destroy = lv_pay_destroy, .src_img = &img_wechatpay},
+    {.name = "AliPay", .callback = lv_pay, .destroy = lv_pay_destroy, .src_img = &img_alipay},
+
 };
 
+/*********************************************************************
+ *
+ *                          PAY
+ *
+ * ******************************************************************/
+static lv_res_t lv_pay(lv_obj_t *par)
+{
+    gContainer = lv_obj_create(par, NULL);
+    lv_obj_set_size(gContainer,  g_menu_view_width, g_menu_view_height);
+    lv_obj_set_style(gContainer, &lv_style_transp_fit);
+    lv_obj_t *img = lv_img_create(gContainer, NULL);
+    lv_img_set_src(img, &img_qr);
+    lv_obj_align(img, NULL, LV_ALIGN_CENTER, 0, 0);
 
+}
+
+static void lv_pay_destroy()
+{
+    lv_obj_del(gContainer);
+    gContainer = NULL;
+    gObjecter = NULL;
+}
 
 /*********************************************************************
  *
@@ -487,10 +518,12 @@ void lv_ble_mbox_event(const char *event_txt)
 static void lv_ble_setting_destroy()
 {
     connect = false;
+#ifdef ESP32
     task_event_data_t event_data;
     event_data.type = MESS_EVENT_BLE;
     event_data.ble.event = LV_BLE_DISCONNECT;
     xQueueSend(g_event_queue_handle, &event_data, portMAX_DELAY);
+#endif
     lv_obj_del(gContainer);
     gContainer = NULL;
     gObjecter = NULL;
@@ -1687,17 +1720,17 @@ void create_menu(lv_obj_t *par)
 
     static const lv_point_t vp[] = {
 #if     ((BLE_EN) && ((!GPS_EN) && (!S7XG_EN)))
-        {0, 0}, {1, 0}, {2, 0}, {3, 0}, {4, 0}, {5, 0},
-#elif   ((BLE_EN) && (GPS_EN))
-        {0, 0}, {1, 0}, {2, 0}, {3, 0}, {4, 0}, {5, 0}, {6, 0},
-#elif   ((BLE_EN) && (S7XG_EN))
         {0, 0}, {1, 0}, {2, 0}, {3, 0}, {4, 0}, {5, 0}, {6, 0}, {7, 0},
+#elif   ((BLE_EN) && (GPS_EN))
+        {0, 0}, {1, 0}, {2, 0}, {3, 0}, {4, 0}, {5, 0}, {6, 0}, {7, 0}, {8, 0},
+#elif   ((BLE_EN) && (S7XG_EN))
+        {0, 0}, {1, 0}, {2, 0}, {3, 0}, {4, 0}, {5, 0}, {6, 0}, {7, 0}, {8, 0}, {9, 0},
 #elif   (S7XG_EN)
-        {0, 0}, {1, 0}, {2, 0}, {3, 0}, {4, 0}, {5, 0}, {6, 0},
+        {0, 0}, {1, 0}, {2, 0}, {3, 0}, {4, 0}, {5, 0}, {6, 0}, {7, 0}, {8, 0},
 #elif  (GPS_EN)
-        {0, 0}, {1, 0}, {2, 0}, {3, 0}, {4, 0}, {5, 0},
+        {0, 0}, {1, 0}, {2, 0}, {3, 0}, {4, 0}, {5, 0}, {6, 0}, {7, 0},
 #else
-        {0, 0}, {1, 0}, {2, 0}, {3, 0}, {4, 0},
+        {0, 0}, {1, 0}, {2, 0}, {3, 0}, {4, 0}, {5, 0}, {6, 0},
 #endif
         {LV_COORD_MIN, LV_COORD_MIN}
     };
