@@ -73,35 +73,74 @@ void wifi_event_setup()
 
 bool syncRtcBySystemTime()
 {
-    struct tm info;
-    time_t now;
-    time(&now);
-    localtime_r(&now, &info);
-    if (info.tm_year > (2016 - 1900)) {
-        Serial.println("syncRtcBySystemTime");
-        //Month (starting from January, 0 for January) - Value range is [0,11]
-        rtc.setDateTime(info.tm_year, info.tm_mon + 1, info.tm_mday, info.tm_hour, info.tm_min, info.tm_sec);
-        return true;
+    // struct tm info;
+    // time_t now;
+    // time(&now);
+    // localtime_r(&now, &info);
+    // if (info.tm_year > (2016 - 1900)) {
+    //     Serial.println("syncRtcBySystemTime");
+    //     //Month (starting from January, 0 for January) - Value range is [0,11]
+    //     rtc.setDateTime(info.tm_year, info.tm_mon + 1, info.tm_mday, info.tm_hour, info.tm_min, info.tm_sec);
+    //     return true;
+    // }
+
+    struct tm timeinfo;
+    bool ret = false;
+    int retry = 0;
+    configTzTime("CST-8", "pool.ntp.org");
+    do {
+        ret = getLocalTime(&timeinfo);
+        if (!ret) {
+            Serial.printf("get ntp fail,retry : %d \n", retry++);
+        }
+    } while (!ret && retry < 3);
+
+    if (ret) {
+        char format[256];
+        Serial.print("NTP Time is : ");
+        Serial.println(&timeinfo, " %A, %B %d %Y %H:%M:%S");
+        Serial.print("NTP Time is : ");
+        snprintf(format, sizeof(format), "%d-%d-%d/%d:%d:%d", timeinfo.tm_year + 1900, timeinfo.tm_mon + 1, timeinfo.tm_mday, timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
+        Serial.println(format);
+
+        rtc.setDateTime(timeinfo.tm_year, timeinfo.tm_mon + 1, timeinfo.tm_mday, timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
+
+        RTC_Date d = rtc.getDateTime();
+        if (d.year != (timeinfo.tm_year + 1900) || d.month != timeinfo.tm_mon + 1 || d.day !=  timeinfo.tm_mday
+                ||  d.hour != timeinfo.tm_hour ||
+                d.minute != timeinfo.tm_min) {
+            Serial.println("Write RTC Fail");
+            Serial.println(rtc.formatDateTime(PCF_TIMEFORMAT_YYYY_MM_DD_H_M_S));
+        } else {
+            Serial.print("Write RTC PASS : ");
+            // int i = 5;
+            // while (i--) {
+            Serial.print("Read RTC :");
+            Serial.println(rtc.formatDateTime(PCF_TIMEFORMAT_YYYY_MM_DD_H_M_S));
+            //     delay(1000);
+            // }
+        }
     }
-    return false;
+
+    return true;
 }
 
 
 void syncSystemTimeByRtc()
 {
-    struct tm t_tm;
-    struct timeval val;
-    RTC_Date dt = rtc.getDateTime();
-    t_tm.tm_hour = dt.hour;
-    t_tm.tm_min = dt.minute;
-    t_tm.tm_sec = dt.second;
-    t_tm.tm_year = dt.year - 1900;    //Year, whose value starts from 1900
-    t_tm.tm_mon = dt.month - 1;       //Month (starting from January, 0 for January) - Value range is [0,11]
-    t_tm.tm_mday = dt.day;
-    val.tv_sec = mktime(&t_tm);
-    val.tv_usec = 0;
-    settimeofday(&val, NULL);
-    Serial.print("Get RTC DateTime:");
+    // struct tm t_tm;
+    // struct timeval val;
+    // RTC_Date dt = rtc.getDateTime();
+    // t_tm.tm_hour = dt.hour;
+    // t_tm.tm_min = dt.minute;
+    // t_tm.tm_sec = dt.second;
+    // t_tm.tm_year = dt.year - 1900;    //Year, whose value starts from 1900
+    // t_tm.tm_mon = dt.month - 1;       //Month (starting from January, 0 for January) - Value range is [0,11]
+    // t_tm.tm_mday = dt.day;
+    // val.tv_sec = mktime(&t_tm);
+    // val.tv_usec = 0;
+    // settimeofday(&val, NULL);
+    Serial.print("Read RTC :");
     Serial.println(rtc.formatDateTime(PCF_TIMEFORMAT_YYYY_MM_DD_H_M_S));
 }
 
@@ -220,7 +259,6 @@ void wifi_handle(void *data)
         wifiTicker->detach();
         delete wifiTicker;
         lv_wifi_connect_pass();
-        configTzTime("CST-8", "pool.ntp.org");
 
         task_event_data_t event_data;
         event_data.type = MESS_EVENT_TIME;
@@ -419,12 +457,18 @@ static void time_task(void *param)
                                                 BIT0,
                                                 pdFALSE, pdFALSE, portMAX_DELAY);
         if (bits & BIT0) {
-            if (getLocalTime(&time)) {
-                event_data.type = MESS_EVENT_TIME;
-                event_data.time.event = LVGL_TIME_UPDATE;
-                event_data.time.time = time;
-                xQueueSend(g_event_queue_handle, &event_data, portMAX_DELAY);
-            }
+            // if (getLocalTime(&time)) {
+            RTC_Date dt = rtc.getDateTime();
+            time.tm_year =  dt.year - 1900;
+            time.tm_mon = dt.month - 1;
+            time.tm_mday = dt.day;
+            time.tm_hour = dt.hour;
+            time.tm_min = dt.minute;
+            event_data.type = MESS_EVENT_TIME;
+            event_data.time.event = LVGL_TIME_UPDATE;
+            event_data.time.time = time;
+            xQueueSend(g_event_queue_handle, &event_data, portMAX_DELAY);
+            // }
         }
         delay(1000);
     }
