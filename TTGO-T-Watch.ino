@@ -73,17 +73,6 @@ void wifi_event_setup()
 
 bool syncRtcBySystemTime()
 {
-    // struct tm info;
-    // time_t now;
-    // time(&now);
-    // localtime_r(&now, &info);
-    // if (info.tm_year > (2016 - 1900)) {
-    //     Serial.println("syncRtcBySystemTime");
-    //     //Month (starting from January, 0 for January) - Value range is [0,11]
-    //     rtc.setDateTime(info.tm_year, info.tm_mon + 1, info.tm_mday, info.tm_hour, info.tm_min, info.tm_sec);
-    //     return true;
-    // }
-
     struct tm timeinfo;
     bool ret = false;
     int retry = 0;
@@ -113,12 +102,8 @@ bool syncRtcBySystemTime()
             Serial.println(rtc.formatDateTime(PCF_TIMEFORMAT_YYYY_MM_DD_H_M_S));
         } else {
             Serial.print("Write RTC PASS : ");
-            // int i = 5;
-            // while (i--) {
             Serial.print("Read RTC :");
             Serial.println(rtc.formatDateTime(PCF_TIMEFORMAT_YYYY_MM_DD_H_M_S));
-            //     delay(1000);
-            // }
         }
     }
 
@@ -128,18 +113,6 @@ bool syncRtcBySystemTime()
 
 void syncSystemTimeByRtc()
 {
-    // struct tm t_tm;
-    // struct timeval val;
-    // RTC_Date dt = rtc.getDateTime();
-    // t_tm.tm_hour = dt.hour;
-    // t_tm.tm_min = dt.minute;
-    // t_tm.tm_sec = dt.second;
-    // t_tm.tm_year = dt.year - 1900;    //Year, whose value starts from 1900
-    // t_tm.tm_mon = dt.month - 1;       //Month (starting from January, 0 for January) - Value range is [0,11]
-    // t_tm.tm_mday = dt.day;
-    // val.tv_sec = mktime(&t_tm);
-    // val.tv_usec = 0;
-    // settimeofday(&val, NULL);
     Serial.print("Read RTC :");
     Serial.println(rtc.formatDateTime(PCF_TIMEFORMAT_YYYY_MM_DD_H_M_S));
 }
@@ -457,7 +430,6 @@ static void time_task(void *param)
                                                 BIT0,
                                                 pdFALSE, pdFALSE, portMAX_DELAY);
         if (bits & BIT0) {
-            // if (getLocalTime(&time)) {
             RTC_Date dt = rtc.getDateTime();
             time.tm_year =  dt.year - 1900;
             time.tm_mon = dt.month - 1;
@@ -468,7 +440,6 @@ static void time_task(void *param)
             event_data.time.event = LVGL_TIME_UPDATE;
             event_data.time.time = time;
             xQueueSend(g_event_queue_handle, &event_data, portMAX_DELAY);
-            // }
         }
         delay(1000);
     }
