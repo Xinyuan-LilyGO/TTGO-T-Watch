@@ -22,3 +22,6 @@
 [submodule "libraries/S7xG_Library"]
 	path = libraries/S7xG_Library
 	url = https://github.com/lewisxhe/S7xG_Library.git
+[submodule "libraries/FT5206_Library"]
+	path = libraries/FT5206_Library
+	url = https://github.com/lewisxhe/FT5206_Library.git
