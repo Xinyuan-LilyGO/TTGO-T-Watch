@@ -72,9 +72,9 @@ bool sd_init()
 
 static void listDir(fs::FS &fs, const char *dirname, uint8_t levels)
 {
-    if (!sd_detect()) {
-        return ;
-    }
+    // if (!sd_detect()) {
+    //     return ;
+    // }
     uint8_t cnt = 0;
     File root = fs.open(dirname);
     if (!root) {
