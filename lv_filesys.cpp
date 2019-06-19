@@ -39,10 +39,10 @@ bool sd_detect()
 
 bool sd_init()
 {
-    pinMode(4, INPUT_PULLUP);
-    if (!sd_detect()) {
-        return false;
-    }
+    // pinMode(4, INPUT_PULLUP);
+    // if (!sd_detect()) {
+    //     return false;
+    // }
     SDSPI.begin(SD_SCLK, SD_MISO, SD_MOSI, SD_CS);
     if (!f_dev.begin(SD_CS, SDSPI)) {
         Serial.println("\nSD Card Mount Failed");
