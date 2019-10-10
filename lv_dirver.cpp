@@ -49,6 +49,7 @@ static void touch_timer_reset()
 static void ex_disp_flush(int32_t x1, int32_t y1, int32_t x2, int32_t y2, const lv_color_t *color_array)
 {
     uint32_t size = (x2 - x1 + 1) * (y2 - y1 + 1) * 2;
+    printf("x:%d x1:%d y:%d y1:%d size:%u\n", x1, x2, y1, y2,size);
     tft->setAddrWindow(x1, y1, x2, y2);
     tft->pushColors((uint8_t *)color_array, size);
     lv_flush_ready();

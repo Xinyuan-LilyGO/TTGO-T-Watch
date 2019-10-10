@@ -197,18 +197,14 @@ void setup()
             portYIELD_FROM_ISR ();
         }
     }, FALLING);
-
-
     if (axp.isChargeing()) {
         charging_anim_start();
     }
-
     xTaskCreate(time_task, "time", 2048, NULL, 20, NULL);
 
 #ifdef ENABLE_BLE
     ble_init();
 #endif
-
     xEventGroupSetBits(g_sync_event_group, BIT0);
 }
 
@@ -237,7 +233,6 @@ void wifi_handle(void *data)
         event_data.type = MESS_EVENT_TIME;
         event_data.time.event = LVGL_TIME_SYNC;
         xQueueSend(g_event_queue_handle, &event_data, portMAX_DELAY);
-
         break;
     case LVGL_WIFI_CONFIG_CONNECT_FAIL:
         Serial.println("Connect Fail,Power OFF WiFi");

@@ -338,7 +338,6 @@ static lv_res_t lv_pay(lv_obj_t *par)
     lv_obj_t *img = lv_img_create(gContainer, NULL);
     lv_img_set_src(img, &img_qr);
     lv_obj_align(img, NULL, LV_ALIGN_CENTER, 0, 0);
-
 }
 
 static void lv_pay_destroy()
@@ -1699,7 +1698,6 @@ void create_menu(lv_obj_t *par)
     lv_win_set_style(g_menu_win, LV_WIN_STYLE_BG, &style_txt);
 
 
-
 #ifdef UBOX_GPS_MODULE
 #define GPS_EN  1
 #else
@@ -1761,7 +1759,6 @@ void create_menu(lv_obj_t *par)
         img = lv_img_create(cur_obj, NULL);
         lv_img_set_src(img, menu_data[i].src_img);
         lv_obj_align(img, NULL, LV_ALIGN_CENTER, 0, -20);
-
 
         if (prev_obj != cur_obj) {
             prev_obj = cur_obj;
