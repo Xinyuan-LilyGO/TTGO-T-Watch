@@ -1,4 +1,4 @@
-#pragma onec
+#pragma once
 bool motion_task_init();
 void motion_handle(void *arg);
 void bma423_disable_interrupt();

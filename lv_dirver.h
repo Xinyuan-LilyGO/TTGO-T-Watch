@@ -1,4 +1,4 @@
-#pragma onec
+#pragma once
 #include <Arduino.h>
 
 

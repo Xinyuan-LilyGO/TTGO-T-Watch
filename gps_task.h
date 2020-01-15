@@ -1,4 +1,4 @@
-#pragma onec
+#pragma once
 
 
 void gps_task_init();
